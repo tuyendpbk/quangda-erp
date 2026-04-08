@@ -1,0 +1,34 @@
+@model PrintERP.Web.Models.ViewModels.OrderListViewModel
+@{
+    ViewData["Title"] = "Order List";
+}
+
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-start mb-3 gap-2 flex-wrap">
+        <div>
+            <h2 class="mb-1">Danh sách đơn hàng</h2>
+            <div class="text-muted">Hiển thị các đơn hàng trong hệ thống theo điều kiện tìm kiếm/lọc.</div>
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            @if (Model.CanCreateOrder)
+            {
+                <a class="btn btn-primary" asp-action="Create">Tạo đơn hàng</a>
+            }
+            @if (Model.CanExport)
+            {
+                <button type="button" class="btn btn-outline-success" disabled>Xuất Excel</button>
+                <button type="button" class="btn btn-outline-secondary" disabled>Xuất PDF</button>
+            }
+        </div>
+    </div>
+
+    @if (ViewBag.ErrorMessage is string errorMessage && !string.IsNullOrWhiteSpace(errorMessage))
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <partial name="_OrderFilter" model="Model" />
+    <partial name="_OrderListSummary" model="Model" />
+    <partial name="_OrderListTable" model="Model" />
+    <partial name="_OrderListPagination" model="Model" />
+</div>

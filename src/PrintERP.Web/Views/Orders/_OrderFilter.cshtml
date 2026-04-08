@@ -1,0 +1,99 @@
+@model PrintERP.Web.Models.ViewModels.OrderListViewModel
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="Index" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Từ khóa</label>
+                <input class="form-control" name="Keyword" value="@Model.Filter.Keyword" placeholder="Nhập mã đơn, tên khách hàng, số điện thoại..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trạng thái đơn</label>
+                <select class="form-select" name="Status">
+                    <option value="ALL">Tất cả</option>
+                    @foreach (var status in new[] { "NEW", "DESIGN", "PRODUCING", "DONE", "DELIVERED", "CANCELLED" })
+                    {
+                        <option value="@status" selected="@(string.Equals(Model.Filter.Status, status, StringComparison.OrdinalIgnoreCase))">@status</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trạng thái thanh toán</label>
+                <select class="form-select" name="PaymentStatus">
+                    <option value="ALL">Tất cả</option>
+                    @foreach (var status in new[] { "UNPAID", "PARTIAL", "PAID" })
+                    {
+                        <option value="@status" selected="@(string.Equals(Model.Filter.PaymentStatus, status, StringComparison.OrdinalIgnoreCase))">@status</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Khách hàng</label>
+                <select class="form-select" name="CustomerId">
+                    <option value="">Tất cả</option>
+                    @foreach (var customer in Model.Customers)
+                    {
+                        <option value="@customer.Id" selected="@(Model.Filter.CustomerId == customer.Id)">@customer.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Nhân viên sales</label>
+                <select class="form-select" name="SalesEmployeeId">
+                    <option value="">Tất cả</option>
+                    @foreach (var employee in Model.Employees)
+                    {
+                        <option value="@employee.Id" selected="@(Model.Filter.SalesEmployeeId == employee.Id)">@employee.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Nhân viên phụ trách</label>
+                <select class="form-select" name="AssignedEmployeeId">
+                    <option value="">Tất cả</option>
+                    @foreach (var employee in Model.Employees)
+                    {
+                        <option value="@employee.Id" selected="@(Model.Filter.AssignedEmployeeId == employee.Id)">@employee.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Từ ngày tạo</label>
+                <input class="form-control" type="date" name="OrderDateFrom" value="@Model.Filter.OrderDateFrom?.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Đến ngày tạo</label>
+                <input class="form-control" type="date" name="OrderDateTo" value="@Model.Filter.OrderDateTo?.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Từ ngày giao</label>
+                <input class="form-control" type="date" name="DeliveryDateFrom" value="@Model.Filter.DeliveryDateFrom?.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Đến ngày giao</label>
+                <input class="form-control" type="date" name="DeliveryDateTo" value="@Model.Filter.DeliveryDateTo?.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="IsOverdueOnly" value="true" checked="@Model.Filter.IsOverdueOnly" />
+                    <label class="form-check-label">Chỉ hiện đơn trễ hạn</label>
+                </div>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="IsNearDueOnly" value="true" checked="@Model.Filter.IsNearDueOnly" />
+                    <label class="form-check-label">Chỉ hiện đơn sắp giao</label>
+                </div>
+            </div>
+
+            <input type="hidden" name="SortBy" value="@Model.Filter.SortBy" />
+            <input type="hidden" name="SortDirection" value="@Model.Filter.SortDirection" />
+            <input type="hidden" name="Page" value="1" />
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Xóa lọc</a>
+            </div>
+        </form>
+    </div>
+</div>

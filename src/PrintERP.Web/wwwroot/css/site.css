@@ -80,3 +80,20 @@ body {
         display: none;
     }
 }
+
+.order-list-table th,
+.order-list-table td {
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.order-list-table th:last-child,
+.order-list-table td:last-child {
+    position: sticky;
+    right: 0;
+    background: #fff;
+}
+
+.order-list-table thead th:last-child {
+    background: #f8f9fa;
+}

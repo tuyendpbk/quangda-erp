@@ -1,0 +1,149 @@
+@model PrintERP.Web.Models.ViewModels.OrderListViewModel
+@{
+    string FmtMoney(decimal value) => string.Format("{0:N0}", value);
+    string FmtDate(DateTime value) => value.ToString("dd/MM/yyyy");
+    string StatusClass(string status) => status.ToUpperInvariant() switch
+    {
+        "NEW" => "text-bg-secondary",
+        "DESIGN" => "text-bg-primary",
+        "PRODUCING" => "text-bg-warning",
+        "DONE" => "text-bg-success",
+        "DELIVERED" => "bg-primary text-white",
+        "CANCELLED" => "text-bg-danger",
+        _ => "text-bg-secondary"
+    };
+    string PaymentStatusClass(string status) => status.ToUpperInvariant() switch
+    {
+        "UNPAID" => "text-bg-secondary",
+        "PARTIAL" => "text-bg-warning",
+        "PAID" => "text-bg-success",
+        _ => "text-bg-secondary"
+    };
+    string BuildSortLink(string field)
+    {
+        var isCurrent = string.Equals(Model.Filter.SortBy, field, StringComparison.OrdinalIgnoreCase);
+        var direction = isCurrent && string.Equals(Model.Filter.SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+        return Url.Action("Index", new
+        {
+            Model.Filter.Keyword,
+            Model.Filter.Status,
+            Model.Filter.PaymentStatus,
+            Model.Filter.CustomerId,
+            Model.Filter.SalesEmployeeId,
+            Model.Filter.AssignedEmployeeId,
+            Model.Filter.OrderDateFrom,
+            Model.Filter.OrderDateTo,
+            Model.Filter.DeliveryDateFrom,
+            Model.Filter.DeliveryDateTo,
+            Model.Filter.IsOverdueOnly,
+            Model.Filter.IsNearDueOnly,
+            SortBy = field,
+            SortDirection = direction,
+            Page = 1,
+            Model.Filter.PageSize
+        }) ?? "#";
+    }
+}
+
+<div class="card mb-3">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle mb-0 order-list-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>STT</th>
+                        <th><a href="@BuildSortLink("orderCode")">Mã đơn</a></th>
+                        <th><a href="@BuildSortLink("orderDate")">Ngày tạo</a></th>
+                        <th><a href="@BuildSortLink("deliveryDate")">Ngày giao</a></th>
+                        <th><a href="@BuildSortLink("customer")">Khách hàng</a></th>
+                        <th>SĐT</th>
+                        <th>Nhân viên sales</th>
+                        <th>Phụ trách</th>
+                        <th><a href="@BuildSortLink("status")">Trạng thái</a></th>
+                        <th>Thanh toán</th>
+                        <th>Tạm tính</th>
+                        <th>Giảm giá</th>
+                        <th>Thuế</th>
+                        <th><a href="@BuildSortLink("totalAmount")">Tổng tiền</a></th>
+                        <th><a href="@BuildSortLink("paidAmount")">Đã thanh toán</a></th>
+                        <th><a href="@BuildSortLink("remainingAmount")">Còn lại</a></th>
+                        <th>Số hạng mục</th>
+                        <th>Ghi chú</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Items.Count == 0)
+                    {
+                        <tr><td colspan="19" class="text-center text-muted py-4">Không có đơn hàng phù hợp.</td></tr>
+                    }
+                    else
+                    {
+                        @for (var i = 0; i < Model.Items.Count; i++)
+                        {
+                            var item = Model.Items[i];
+                            var index = ((Model.Filter.Page - 1) * Model.Filter.PageSize) + i + 1;
+                            <tr>
+                                <td>@index</td>
+                                <td><a asp-action="Details" asp-route-id="@item.Id">@item.OrderCode</a></td>
+                                <td>@FmtDate(item.OrderDate)</td>
+                                <td>
+                                    @if (item.DeliveryDate.HasValue)
+                                    {
+                                        <span class="@(item.IsOverdue ? "text-danger fw-semibold" : item.IsNearDue ? "text-warning fw-semibold" : string.Empty)">@FmtDate(item.DeliveryDate.Value)</span>
+                                    }
+                                    else
+                                    {
+                                        <span>-</span>
+                                    }
+                                </td>
+                                <td>@item.CustomerName</td>
+                                <td>@item.CustomerPhone</td>
+                                <td>@item.SalesEmployeeName</td>
+                                <td>@(item.AssignedEmployeeName ?? "-")</td>
+                                <td><span class="badge @StatusClass(item.Status)">@item.Status</span></td>
+                                <td><span class="badge @PaymentStatusClass(item.PaymentStatus)">@item.PaymentStatus</span></td>
+                                <td>@FmtMoney(item.SubtotalAmount)</td>
+                                <td>@FmtMoney(item.DiscountAmount)</td>
+                                <td>@FmtMoney(item.TaxAmount)</td>
+                                <td>@FmtMoney(item.TotalAmount)</td>
+                                <td>@FmtMoney(item.PaidAmount)</td>
+                                <td>@FmtMoney(item.RemainingAmount)</td>
+                                <td>@item.ItemCount</td>
+                                <td class="text-truncate" style="max-width: 180px;">@item.Note</td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @if (item.CanView)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@item.Id">Chi tiết</a>
+                                        }
+                                        @if (item.CanEdit)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled>Sửa</button>
+                                        }
+                                        @if (item.CanUpdateStatus)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-info" disabled>Cập nhật trạng thái</button>
+                                        }
+                                        @if (item.CanRecordPayment)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-success" disabled>Ghi nhận thanh toán</button>
+                                        }
+                                        @if (item.CanCreateStockOut)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-warning" disabled>Tạo xuất kho</button>
+                                        }
+                                        @if (item.CanExportPdf)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-dark" disabled>PDF</button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

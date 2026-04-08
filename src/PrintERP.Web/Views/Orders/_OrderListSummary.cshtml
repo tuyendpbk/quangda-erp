@@ -1,0 +1,10 @@
+@model PrintERP.Web.Models.ViewModels.OrderListViewModel
+@{
+    string FmtMoney(decimal value) => string.Format("{0:N0}", value);
+}
+<div class="row g-3 mb-3">
+    <div class="col-md-3"><div class="border rounded p-2 bg-white"><small class="text-muted d-block">Tổng số đơn</small><strong>@Model.TotalRecords</strong></div></div>
+    <div class="col-md-3"><div class="border rounded p-2 bg-white"><small class="text-muted d-block">Tổng giá trị đơn</small><strong>@FmtMoney(Model.TotalOrderAmount)</strong></div></div>
+    <div class="col-md-3"><div class="border rounded p-2 bg-white"><small class="text-muted d-block">Tổng đã thanh toán</small><strong>@FmtMoney(Model.TotalPaidAmount)</strong></div></div>
+    <div class="col-md-3"><div class="border rounded p-2 bg-white"><small class="text-muted d-block">Tổng còn nợ</small><strong>@FmtMoney(Model.TotalRemainingAmount)</strong></div></div>
+</div>
