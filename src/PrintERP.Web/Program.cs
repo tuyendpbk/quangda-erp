@@ -35,6 +35,8 @@ builder.Services.AddAuthorization(options =>
         policy.RequireClaim("Permission", OrderPermissions.Create));
     options.AddPolicy("OrderView", policy =>
         policy.RequireClaim("Permission", OrderPermissions.View));
+    options.AddPolicy("OrderStatusUpdate", policy =>
+        policy.RequireClaim("Permission", OrderPermissions.StatusUpdate));
 });
 
 var app = builder.Build();

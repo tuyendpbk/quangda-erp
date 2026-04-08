@@ -270,7 +270,7 @@ public class OrderService(ICustomerService customerService) : IOrderService
                     IsNearDue = isNearDue,
                     CanView = hasPermission(OrderPermissions.View),
                     CanEdit = hasPermission(OrderPermissions.Edit) && !isDelivered && !isCancelled,
-                    CanUpdateStatus = hasPermission(OrderPermissions.StatusUpdate) && !isCancelled,
+                    CanUpdateStatus = hasPermission(OrderPermissions.StatusUpdate) && !isDelivered && !isCancelled,
                     CanRecordPayment = hasPermission(PaymentPermissions.Create) && remainingAmount > 0 && !isCancelled,
                     CanCreateStockOut = hasPermission(StockOutPermissions.Create) && !isCancelled,
                     CanExportPdf = hasPermission(OrderPermissions.View)
@@ -309,6 +309,99 @@ public class OrderService(ICustomerService customerService) : IOrderService
         };
 
         return Task.FromResult(model);
+    }
+
+    public Task<OrderStatusUpdateViewModel?> BuildStatusUpdateAsync(long id, ClaimsPrincipal user, CancellationToken cancellationToken = default)
+    {
+        var order = InMemoryOrderDataStore.Orders.FirstOrDefault(x => x.Id == id);
+        if (order is null)
+        {
+            return Task.FromResult<OrderStatusUpdateViewModel?>(null);
+        }
+
+        var canOverrideFlow = CanOverrideStatusFlow(user);
+        var availableStatuses = GetAvailableStatuses(order.Status, canOverrideFlow);
+
+        var model = new OrderStatusUpdateViewModel
+        {
+            OrderId = order.Id,
+            OrderCode = order.OrderCode,
+            CustomerName = order.CustomerName,
+            OrderDate = order.OrderDate,
+            DeliveryDate = order.DeliveryDate,
+            CurrentStatus = order.Status,
+            HasPayments = order.Payments.Count != 0,
+            HasStockOut = order.StockOuts.Count != 0,
+            IsLocked = IsLockedStatus(order.Status),
+            AvailableStatuses = availableStatuses
+        };
+
+        return Task.FromResult<OrderStatusUpdateViewModel?>(model);
+    }
+
+    public Task<(bool Success, string? Error)> UpdateStatusAsync(OrderStatusUpdateViewModel model, ClaimsPrincipal user, CancellationToken cancellationToken = default)
+    {
+        var order = InMemoryOrderDataStore.Orders.FirstOrDefault(x => x.Id == model.OrderId);
+        if (order is null)
+        {
+            return Task.FromResult((Success: false, Error: (string?)"Không tìm thấy đơn hàng."));
+        }
+
+        var oldStatus = order.Status.Trim().ToUpperInvariant();
+        var newStatus = model.NewStatus.Trim().ToUpperInvariant();
+        if (string.IsNullOrWhiteSpace(newStatus))
+        {
+            return Task.FromResult((Success: false, Error: (string?)"Vui lòng chọn trạng thái mới"));
+        }
+
+        if (string.Equals(oldStatus, newStatus, StringComparison.OrdinalIgnoreCase))
+        {
+            return Task.FromResult((Success: false, Error: (string?)"Trạng thái mới phải khác trạng thái hiện tại"));
+        }
+
+        var canOverrideFlow = CanOverrideStatusFlow(user);
+        if (IsLockedStatus(oldStatus) && !canOverrideFlow)
+        {
+            return Task.FromResult((Success: false, Error: (string?)"Không thể chuyển từ trạng thái hiện tại sang trạng thái đã chọn."));
+        }
+
+        var availableStatuses = GetAvailableStatuses(oldStatus, canOverrideFlow);
+        if (!availableStatuses.Contains(newStatus, StringComparer.OrdinalIgnoreCase))
+        {
+            return Task.FromResult((Success: false, Error: (string?)"Không thể chuyển từ trạng thái hiện tại sang trạng thái đã chọn."));
+        }
+
+        if (string.Equals(newStatus, "CANCELLED", StringComparison.OrdinalIgnoreCase))
+        {
+            if (string.IsNullOrWhiteSpace(model.Note))
+            {
+                return Task.FromResult((Success: false, Error: (string?)"Vui lòng nhập lý do hủy đơn"));
+            }
+
+            if ((order.Payments.Count > 0 || order.StockOuts.Count > 0) && !canOverrideFlow)
+            {
+                return Task.FromResult((Success: false, Error: (string?)"Không thể hủy đơn vì đơn đã phát sinh thanh toán hoặc xuất kho."));
+            }
+        }
+
+        if (string.Equals(newStatus, "DELIVERED", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(oldStatus, "DONE", StringComparison.OrdinalIgnoreCase)
+            && !canOverrideFlow)
+        {
+            return Task.FromResult((Success: false, Error: (string?)"Không thể chuyển từ trạng thái hiện tại sang trạng thái đã chọn."));
+        }
+
+        order.Status = newStatus;
+        order.StatusHistories.Add(new OrderStatusHistoryViewModel
+        {
+            ChangedAt = DateTime.Now,
+            OldStatus = oldStatus,
+            NewStatus = newStatus,
+            ChangedBy = user.FindFirstValue("FullName") ?? user.Identity?.Name ?? "System",
+            Note = string.IsNullOrWhiteSpace(model.Note) ? null : model.Note.Trim()
+        });
+
+        return Task.FromResult((Success: true, Error: (string?)null));
     }
 
     private static OrderFilterViewModel NormalizeFilter(OrderFilterViewModel filter)
@@ -373,6 +466,35 @@ public class OrderService(ICustomerService customerService) : IOrderService
         };
     }
 
+    private static bool CanOverrideStatusFlow(ClaimsPrincipal user)
+    {
+        var role = user.FindFirstValue(ClaimTypes.Role);
+        return string.Equals(role, DashboardRoles.Admin, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsLockedStatus(string status)
+    {
+        return string.Equals(status, "DELIVERED", StringComparison.OrdinalIgnoreCase)
+               || string.Equals(status, "CANCELLED", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<string> GetAvailableStatuses(string currentStatus, bool canOverrideFlow)
+    {
+        if (canOverrideFlow)
+        {
+            return ["NEW", "DESIGN", "PRODUCING", "DONE", "DELIVERED", "CANCELLED"];
+        }
+
+        return currentStatus.Trim().ToUpperInvariant() switch
+        {
+            "NEW" => ["DESIGN", "CANCELLED"],
+            "DESIGN" => ["PRODUCING", "CANCELLED"],
+            "PRODUCING" => ["DONE", "CANCELLED"],
+            "DONE" => ["DELIVERED"],
+            _ => []
+        };
+    }
+
     public Task<OrderDetailViewModel?> GetDetailAsync(long id, ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
         var order = InMemoryOrderDataStore.Orders.FirstOrDefault(x => x.Id == id);
@@ -390,7 +512,7 @@ public class OrderService(ICustomerService customerService) : IOrderService
                        || string.Equals(order.Status, "CANCELLED", StringComparison.OrdinalIgnoreCase);
 
         order.CanEdit = hasPermission(OrderPermissions.Edit) && !isLocked;
-        order.CanUpdateStatus = hasPermission(OrderPermissions.StatusUpdate) && !string.Equals(order.Status, "CANCELLED", StringComparison.OrdinalIgnoreCase);
+        order.CanUpdateStatus = hasPermission(OrderPermissions.StatusUpdate) && !isLocked;
         order.CanRecordPayment = hasPermission(PaymentPermissions.Create) && order.RemainingAmount > 0 && !string.Equals(order.Status, "CANCELLED", StringComparison.OrdinalIgnoreCase);
         order.CanCreateStockOut = hasPermission(StockOutPermissions.Create) && !string.Equals(order.Status, "CANCELLED", StringComparison.OrdinalIgnoreCase);
         order.CanExportPdf = hasPermission(OrderPermissions.View);

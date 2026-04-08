@@ -100,6 +100,72 @@ public class OrdersController(IOrderService orderService, IPricingService pricin
         }
     }
 
+
+    [HttpGet]
+    [Authorize(Policy = "OrderStatusUpdate")]
+    public async Task<IActionResult> UpdateStatus(long id, CancellationToken cancellationToken)
+    {
+        var model = await orderService.BuildStatusUpdateAsync(id, User, cancellationToken);
+        if (model is null)
+        {
+            return NotFound("Không tìm thấy đơn hàng.");
+        }
+
+        return View(model);
+    }
+
+    [HttpPost]
+    [Authorize(Policy = "OrderStatusUpdate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateStatus(OrderStatusUpdateViewModel model, CancellationToken cancellationToken)
+    {
+        if (!ModelState.IsValid)
+        {
+            var fallback = await orderService.BuildStatusUpdateAsync(model.OrderId, User, cancellationToken);
+            if (fallback is null)
+            {
+                return NotFound("Không tìm thấy đơn hàng.");
+            }
+
+            model.OrderCode = fallback.OrderCode;
+            model.CustomerName = fallback.CustomerName;
+            model.OrderDate = fallback.OrderDate;
+            model.DeliveryDate = fallback.DeliveryDate;
+            model.CurrentStatus = fallback.CurrentStatus;
+            model.AvailableStatuses = fallback.AvailableStatuses;
+            model.HasPayments = fallback.HasPayments;
+            model.HasStockOut = fallback.HasStockOut;
+            model.IsLocked = fallback.IsLocked;
+
+            return View(model);
+        }
+
+        var result = await orderService.UpdateStatusAsync(model, User, cancellationToken);
+        if (!result.Success)
+        {
+            ModelState.AddModelError(string.Empty, result.Error ?? "Không thể cập nhật trạng thái đơn hàng. Vui lòng thử lại sau.");
+
+            var fallback = await orderService.BuildStatusUpdateAsync(model.OrderId, User, cancellationToken);
+            if (fallback is not null)
+            {
+                model.OrderCode = fallback.OrderCode;
+                model.CustomerName = fallback.CustomerName;
+                model.OrderDate = fallback.OrderDate;
+                model.DeliveryDate = fallback.DeliveryDate;
+                model.CurrentStatus = fallback.CurrentStatus;
+                model.AvailableStatuses = fallback.AvailableStatuses;
+                model.HasPayments = fallback.HasPayments;
+                model.HasStockOut = fallback.HasStockOut;
+                model.IsLocked = fallback.IsLocked;
+            }
+
+            return View(model);
+        }
+
+        TempData["SuccessMessage"] = "Cập nhật trạng thái đơn hàng thành công.";
+        return RedirectToAction(nameof(Details), new { id = model.OrderId });
+    }
+
     [HttpGet]
     [Authorize(Policy = "OrderView")]
     public async Task<IActionResult> Details(long id, CancellationToken cancellationToken)
