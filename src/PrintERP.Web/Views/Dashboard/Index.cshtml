@@ -1,5 +1,6 @@
 @model PrintERP.Web.Models.ViewModels.DashboardViewModel
 @using PrintERP.Web.Models.ViewModels
+@using System.Text.Json
 @{
     ViewData["Title"] = "Dashboard";
     var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "N/A";
@@ -80,8 +81,8 @@
         </div>
 
         <div class="row g-3 mb-4">
-            <div class="col-12 col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><h2 class="h5 fw-semibold mb-3">Biểu đồ doanh thu</h2>@if (Model.RevenueChart.Count == 0){<p class="text-secondary mb-0">Không có dữ liệu</p>} else {<ul class="list-group list-group-flush">@foreach (var item in Model.RevenueChart){<li class="list-group-item d-flex justify-content-between px-0"><span>@item.Label</span><strong>@item.Revenue.ToString("N0") đ</strong></li>}</ul>}</div></div></div>
-            <div class="col-12 col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><h2 class="h5 fw-semibold mb-3">Trạng thái đơn hàng</h2>@if (Model.OrderStatusChart.Count == 0){<p class="text-secondary mb-0">Không có dữ liệu</p>} else {<ul class="list-group list-group-flush">@foreach (var item in Model.OrderStatusChart){<li class="list-group-item d-flex justify-content-between px-0"><span>@item.Status</span><strong>@item.Count</strong></li>}</ul>}</div></div></div>
+            <div class="col-12 col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><h2 class="h5 fw-semibold mb-3">Biểu đồ doanh thu</h2>@if (Model.RevenueChart.Count == 0){<p class="text-secondary mb-0">Không có dữ liệu</p>} else {<canvas id="revenueChartCanvas" height="220"></canvas>}</div></div></div>
+            <div class="col-12 col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><h2 class="h5 fw-semibold mb-3">Trạng thái đơn hàng</h2>@if (Model.OrderStatusChart.Count == 0){<p class="text-secondary mb-0">Không có dữ liệu</p>} else {<canvas id="orderStatusChartCanvas" height="220"></canvas>}</div></div></div>
             @if (Model.ShowPaymentBlocks){<div class="col-12 col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><h2 class="h5 fw-semibold mb-3">Tình hình thanh toán</h2>@foreach (var item in Model.PaymentChart){<ul class="list-group list-group-flush"><li class="list-group-item d-flex justify-content-between px-0"><span>Tổng đơn</span><strong>@item.TotalOrderAmount.ToString("N0") đ</strong></li><li class="list-group-item d-flex justify-content-between px-0"><span>Đã thanh toán</span><strong>@item.PaidAmount.ToString("N0") đ</strong></li><li class="list-group-item d-flex justify-content-between px-0"><span>Còn nợ</span><strong>@item.RemainingDebt.ToString("N0") đ</strong></li></ul>}</div></div></div>}
             @if (Model.ShowForecastBlock){<div class="col-12 col-lg-6"><div class="card border-0 shadow-sm h-100 forecast-card"><div class="card-body p-4 d-flex flex-column justify-content-center"><h2 class="h5 fw-semibold mb-2">Dự báo doanh thu kỳ tới</h2><p class="display-6 fw-bold text-primary mb-0">@(Model.ForecastRevenue?.ToString("N0") ?? "0") đ</p></div></div></div>}
         </div>
@@ -100,9 +101,12 @@
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js" integrity="sha384-Gtv+P7D6L7dFfY2TbK7jlza8+Vx4cxvQ4/AfY4qRxaL3V7mgQlkvfCJWx0hG5n5x" crossorigin="anonymous"></script>
     <script>
         const periodTypeSelect = document.getElementById('periodTypeSelect');
         const customFields = document.querySelectorAll('.custom-range-field');
+        const formatCurrency = (value) =>
+            new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 0 }).format(value) + ' đ';
 
         const updateCustomRangeVisibility = () => {
             const isCustom = periodTypeSelect.value === '@DashboardPeriodTypes.Custom';
@@ -111,5 +115,71 @@
 
         periodTypeSelect.addEventListener('change', updateCustomRangeVisibility);
         updateCustomRangeVisibility();
+
+        const revenueChartCanvas = document.getElementById('revenueChartCanvas');
+        if (revenueChartCanvas) {
+            const revenueData = @Html.Raw(JsonSerializer.Serialize(Model.RevenueChart));
+            new Chart(revenueChartCanvas, {
+                type: 'line',
+                data: {
+                    labels: revenueData.map(item => item.label),
+                    datasets: [{
+                        label: 'Doanh thu',
+                        data: revenueData.map(item => item.revenue),
+                        borderColor: '#0d6efd',
+                        backgroundColor: 'rgba(13, 110, 253, 0.12)',
+                        fill: true,
+                        tension: 0.35,
+                        pointRadius: 4,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => `Doanh thu: ${formatCurrency(context.parsed.y ?? 0)}`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            ticks: {
+                                callback: (value) => formatCurrency(value)
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        const orderStatusChartCanvas = document.getElementById('orderStatusChartCanvas');
+        if (orderStatusChartCanvas) {
+            const orderStatusData = @Html.Raw(JsonSerializer.Serialize(Model.OrderStatusChart));
+            new Chart(orderStatusChartCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: orderStatusData.map(item => item.status),
+                    datasets: [{
+                        label: 'Số lượng đơn',
+                        data: orderStatusData.map(item => item.count),
+                        backgroundColor: [
+                            '#0d6efd',
+                            '#20c997',
+                            '#ffc107',
+                            '#dc3545',
+                            '#6f42c1',
+                            '#fd7e14'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
     </script>
 }
