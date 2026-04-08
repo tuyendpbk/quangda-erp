@@ -9,4 +9,6 @@ public interface IOrderService
     Task<(bool Success, string? Error, long? OrderId)> CreateAsync(OrderCreateViewModel model, CancellationToken cancellationToken = default);
     Task<OrderDetailViewModel?> GetDetailAsync(long id, ClaimsPrincipal user, CancellationToken cancellationToken = default);
     Task<OrderListViewModel> GetListAsync(OrderFilterViewModel filter, ClaimsPrincipal user, CancellationToken cancellationToken = default);
+    Task<OrderStatusUpdateViewModel?> BuildStatusUpdateAsync(long id, ClaimsPrincipal user, CancellationToken cancellationToken = default);
+    Task<(bool Success, string? Error)> UpdateStatusAsync(OrderStatusUpdateViewModel model, ClaimsPrincipal user, CancellationToken cancellationToken = default);
 }

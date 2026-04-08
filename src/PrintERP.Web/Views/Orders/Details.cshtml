@@ -82,7 +82,7 @@
         }
         @if (Model.CanUpdateStatus)
         {
-            <button type="button" class="btn btn-outline-primary" disabled>Cập nhật trạng thái</button>
+            <a class="btn btn-outline-primary" asp-action="UpdateStatus" asp-route-id="@Model.Id">Cập nhật trạng thái</a>
         }
         @if (Model.CanRecordPayment)
         {

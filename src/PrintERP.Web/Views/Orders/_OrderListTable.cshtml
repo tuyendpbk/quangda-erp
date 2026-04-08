@@ -123,7 +123,7 @@
                                         }
                                         @if (item.CanUpdateStatus)
                                         {
-                                            <button type="button" class="btn btn-sm btn-outline-info" disabled>Cập nhật trạng thái</button>
+                                            <a class="btn btn-sm btn-outline-info" asp-action="UpdateStatus" asp-route-id="@item.Id">Cập nhật trạng thái</a>
                                         }
                                         @if (item.CanRecordPayment)
                                         {
