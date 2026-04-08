@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate-docs-and-sql:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify required files
+        run: |
+          test -f README.md
+          test -f docs/SRS.md
+          test -f database/schema.sql
+
+      - name: Basic SQL sanity checks
+        run: |
+          test -s database/schema.sql
+          grep -q "CREATE TABLE" database/schema.sql
+
+      - name: Markdown headings sanity check
+        run: |
+          grep -q "# QuangDa ERP" README.md
+          grep -q "# SRS" docs/SRS.md
