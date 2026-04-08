@@ -1,11 +1,15 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using PrintERP.Web.Models.ViewModels;
 using PrintERP.Web.Services.Auth;
+using PrintERP.Web.Services.Implementations;
+using PrintERP.Web.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuthService, InMemoryAuthService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -20,7 +24,11 @@ builder.Services
         options.ExpireTimeSpan = TimeSpan.FromHours(8);
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("DashboardView", policy =>
+        policy.RequireClaim("Permission", DashboardPermissions.View));
+});
 
 var app = builder.Build();
 
