@@ -1,0 +1,64 @@
+@model PrintERP.Web.Models.ViewModels.EmployeeListViewModel
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" asp-action="Index" class="row g-3">
+            <div class="col-md-4">
+                <label class="form-label">Từ khóa</label>
+                <input class="form-control" name="Keyword" value="@Model.Filter.Keyword" placeholder="Nhập mã NV, họ tên, SĐT, email, username..." />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Bộ phận</label>
+                <select class="form-select" name="Department">
+                    <option value="ALL">Tất cả</option>
+                    @foreach (var department in Model.Departments)
+                    {
+                        <option value="@department" selected="@(string.Equals(Model.Filter.Department, department, StringComparison.OrdinalIgnoreCase))">@department</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Chức vụ</label>
+                <input class="form-control" name="Position" value="@Model.Filter.Position" placeholder="Nhập chức vụ" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Vai trò</label>
+                <select class="form-select" name="RoleId">
+                    <option value="">Tất cả</option>
+                    @foreach (var role in Model.Roles)
+                    {
+                        <option value="@role.Id" selected="@(Model.Filter.RoleId == role.Id)">@role.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Trạng thái</label>
+                <select class="form-select" name="Status">
+                    <option value="ALL">Tất cả</option>
+                    @foreach (var status in new[] { "ACTIVE", "INACTIVE" })
+                    {
+                        <option value="@status" selected="@(string.Equals(Model.Filter.Status, status, StringComparison.OrdinalIgnoreCase))">@status</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Từ ngày vào làm</label>
+                <input class="form-control" type="date" name="HireDateFrom" value="@Model.Filter.HireDateFrom?.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Đến ngày vào làm</label>
+                <input class="form-control" type="date" name="HireDateTo" value="@Model.Filter.HireDateTo?.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <input type="hidden" name="SortBy" value="@Model.Filter.SortBy" />
+            <input type="hidden" name="SortDirection" value="@Model.Filter.SortDirection" />
+            <input type="hidden" name="Page" value="1" />
+            <input type="hidden" name="PageSize" value="@Model.Filter.PageSize" />
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">Tìm kiếm</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Xóa lọc</a>
+            </div>
+        </form>
+    </div>
+</div>

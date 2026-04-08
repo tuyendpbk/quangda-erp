@@ -1,0 +1,128 @@
+@model PrintERP.Web.Models.ViewModels.EmployeeListViewModel
+@{
+    string? GetSortClass(string field)
+    {
+        if (!string.Equals(Model.Filter.SortBy, field, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return string.Equals(Model.Filter.SortDirection, "desc", StringComparison.OrdinalIgnoreCase) ? "↓" : "↑";
+    }
+
+    string BuildSortLink(string field)
+    {
+        var isCurrent = string.Equals(Model.Filter.SortBy, field, StringComparison.OrdinalIgnoreCase);
+        var direction = isCurrent && string.Equals(Model.Filter.SortDirection, "asc", StringComparison.OrdinalIgnoreCase) ? "desc" : "asc";
+        return Url.Action("Index", new
+        {
+            Model.Filter.Keyword,
+            Model.Filter.Department,
+            Model.Filter.Position,
+            Model.Filter.RoleId,
+            Model.Filter.Status,
+            Model.Filter.HireDateFrom,
+            Model.Filter.HireDateTo,
+            SortBy = field,
+            SortDirection = direction,
+            Page = 1,
+            Model.Filter.PageSize
+        }) ?? "#";
+    }
+
+    string StatusClass(string status) => status.ToUpperInvariant() switch
+    {
+        "ACTIVE" => "text-bg-success",
+        "INACTIVE" => "text-bg-secondary",
+        _ => "text-bg-secondary"
+    };
+}
+
+<div class="card mb-3">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>STT</th>
+                        <th><a href="@BuildSortLink("employeeCode")">Mã nhân viên @GetSortClass("employeeCode")</a></th>
+                        <th><a href="@BuildSortLink("fullName")">Họ tên @GetSortClass("fullName")</a></th>
+                        <th>SĐT</th>
+                        <th>Email</th>
+                        <th><a href="@BuildSortLink("department")">Bộ phận @GetSortClass("department")</a></th>
+                        <th>Chức vụ</th>
+                        <th><a href="@BuildSortLink("role")">Vai trò @GetSortClass("role")</a></th>
+                        <th>Username</th>
+                        <th><a href="@BuildSortLink("hireDate")">Ngày vào làm @GetSortClass("hireDate")</a></th>
+                        <th><a href="@BuildSortLink("status")">Trạng thái @GetSortClass("status")</a></th>
+                        <th>Số đơn phụ trách</th>
+                        <th>Thao tác</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Items.Count == 0)
+                    {
+                        <tr><td colspan="13" class="text-center text-muted py-4">Không có nhân viên phù hợp.</td></tr>
+                    }
+                    else
+                    {
+                        @for (var i = 0; i < Model.Items.Count; i++)
+                        {
+                            var item = Model.Items[i];
+                            var index = ((Model.Filter.Page - 1) * Model.Filter.PageSize) + i + 1;
+                            <tr>
+                                <td>@index</td>
+                                <td><a asp-action="Details" asp-route-id="@item.Id">@item.EmployeeCode</a></td>
+                                <td><a asp-action="Details" asp-route-id="@item.Id">@item.FullName</a></td>
+                                <td>@item.Phone</td>
+                                <td>@item.Email</td>
+                                <td>@item.Department</td>
+                                <td>@item.Position</td>
+                                <td>@item.RoleName</td>
+                                <td>@item.Username</td>
+                                <td>@item.HireDate?.ToString("dd/MM/yyyy")</td>
+                                <td><span class="badge @StatusClass(item.Status)">@item.Status</span></td>
+                                <td>@item.AssignedOrderCount</td>
+                                <td>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        @if (item.CanView)
+                                        {
+                                            <a class="btn btn-sm btn-outline-primary" asp-action="Details" asp-route-id="@item.Id">Chi tiết</a>
+                                        }
+                                        @if (item.CanEdit)
+                                        {
+                                            <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@item.Id">Sửa</a>
+                                        }
+                                        @if (item.CanToggleStatus)
+                                        {
+                                            <form method="post" asp-action="ToggleStatus" class="d-inline" onsubmit="return confirm('Bạn có chắc chắn muốn @(item.Status == "ACTIVE" ? "khóa" : "mở") nhân viên này?');">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@item.Id" />
+                                                <input type="hidden" name="Keyword" value="@Model.Filter.Keyword" />
+                                                <input type="hidden" name="Department" value="@Model.Filter.Department" />
+                                                <input type="hidden" name="Position" value="@Model.Filter.Position" />
+                                                <input type="hidden" name="RoleId" value="@Model.Filter.RoleId" />
+                                                <input type="hidden" name="Status" value="@Model.Filter.Status" />
+                                                <input type="hidden" name="HireDateFrom" value="@Model.Filter.HireDateFrom?.ToString("yyyy-MM-dd")" />
+                                                <input type="hidden" name="HireDateTo" value="@Model.Filter.HireDateTo?.ToString("yyyy-MM-dd")" />
+                                                <input type="hidden" name="SortBy" value="@Model.Filter.SortBy" />
+                                                <input type="hidden" name="SortDirection" value="@Model.Filter.SortDirection" />
+                                                <input type="hidden" name="Page" value="@Model.Filter.Page" />
+                                                <input type="hidden" name="PageSize" value="@Model.Filter.PageSize" />
+                                                <button type="submit" class="btn btn-sm btn-outline-warning">@(item.Status == "ACTIVE" ? "Khóa" : "Mở")</button>
+                                            </form>
+                                        }
+                                        @if (item.CanResetPassword)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-outline-info" disabled>Reset mật khẩu</button>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
