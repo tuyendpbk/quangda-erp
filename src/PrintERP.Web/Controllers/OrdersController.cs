@@ -8,6 +8,20 @@ namespace PrintERP.Web.Controllers;
 [Authorize]
 public class OrdersController(IOrderService orderService, IPricingService pricingService, ICustomerService customerService, ILogger<OrdersController> logger) : Controller
 {
+
+    [HttpGet]
+    [Authorize(Policy = "OrderView")]
+    public async Task<IActionResult> Index([FromQuery] OrderFilterViewModel filter, CancellationToken cancellationToken)
+    {
+        if (!TryValidateModel(filter))
+        {
+            TempData["ErrorMessage"] = "Điều kiện tìm kiếm không hợp lệ.";
+        }
+
+        var model = await orderService.GetListAsync(filter, User, cancellationToken);
+        ViewBag.ErrorMessage = TempData["ErrorMessage"]?.ToString();
+        return View(model);
+    }
     [HttpGet]
     [Authorize(Policy = "OrderCreate")]
     public async Task<IActionResult> Create(CancellationToken cancellationToken)
