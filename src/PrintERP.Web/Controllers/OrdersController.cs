@@ -36,8 +36,9 @@ public class OrdersController(IOrderService orderService, IPricingService pricin
     public async Task<IActionResult> Create(OrderCreatePageViewModel pageModel, string submitAction, CancellationToken cancellationToken)
     {
         pageModel.Customers = await customerService.GetCustomersAsync(cancellationToken);
-        pageModel.Employees = Services.Implementations.InMemoryOrderDataStore.Employees;
-        pageModel.ProductCategories = Services.Implementations.InMemoryOrderDataStore.ProductCategories;
+        var createPageOptions = await orderService.BuildCreatePageAsync(User, cancellationToken);
+        pageModel.Employees = createPageOptions.Employees;
+        pageModel.ProductCategories = createPageOptions.ProductCategories;
 
         var model = pageModel.Order;
 

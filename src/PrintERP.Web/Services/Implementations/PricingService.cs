@@ -1,29 +1,33 @@
+using Microsoft.EntityFrameworkCore;
+using PrintERP.Web.Data;
 using PrintERP.Web.Models.ViewModels;
 using PrintERP.Web.Services.Interfaces;
 
 namespace PrintERP.Web.Services.Implementations;
 
-public class PricingService : IPricingService
+public class PricingService(AppDbContext dbContext) : IPricingService
 {
-    public Task<OrderItemEstimateResultViewModel> EstimateItemAsync(OrderItemEstimateRequest request, CancellationToken cancellationToken = default)
+    public async Task<OrderItemEstimateResultViewModel> EstimateItemAsync(OrderItemEstimateRequest request, CancellationToken cancellationToken = default)
     {
         if (!request.ProductCategoryId.HasValue || request.Quantity <= 0)
         {
-            return Task.FromResult(new OrderItemEstimateResultViewModel
+            return new OrderItemEstimateResultViewModel
             {
                 Success = false,
                 Message = "Không tìm thấy cấu hình giá phù hợp. Vui lòng nhập đơn giá thủ công."
-            });
+            };
         }
 
-        var category = InMemoryOrderDataStore.ProductCategories.FirstOrDefault(x => x.Id == request.ProductCategoryId.Value);
+        var category = await dbContext.ProductCategories
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.Id == request.ProductCategoryId.Value, cancellationToken);
         if (category is null)
         {
-            return Task.FromResult(new OrderItemEstimateResultViewModel
+            return new OrderItemEstimateResultViewModel
             {
                 Success = false,
                 Message = "Không tìm thấy cấu hình giá phù hợp. Vui lòng nhập đơn giá thủ công."
-            });
+            };
         }
 
         var area = category.UseAreaPricing
@@ -50,7 +54,7 @@ public class PricingService : IPricingService
         var estimatedCost = Math.Round(estimatedLineTotal * 0.72m, 0);
         var estimatedProfit = estimatedLineTotal - estimatedCost;
 
-        return Task.FromResult(new OrderItemEstimateResultViewModel
+        return new OrderItemEstimateResultViewModel
         {
             Success = true,
             Area = area,
@@ -59,6 +63,6 @@ public class PricingService : IPricingService
             EstimatedCost = estimatedCost,
             EstimatedProfit = estimatedProfit,
             PricingNote = $"Estimate theo rule mặc định {category.Name}"
-        });
+        };
     }
 }
