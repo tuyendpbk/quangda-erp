@@ -1,0 +1,66 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Đăng nhập";
+}
+
+<div class="login-page">
+    <div class="login-card">
+        <header class="login-header">
+            <div class="logo">QD</div>
+            <h1>Hệ thống quản lý nhà in</h1>
+            <p>Vui lòng đăng nhập để tiếp tục</p>
+        </header>
+
+        <form asp-action="Login" asp-controller="Account" method="post" class="login-form" id="loginForm">
+            @Html.AntiForgeryToken()
+            @Html.HiddenFor(m => m.ReturnUrl)
+
+            <div asp-validation-summary="ModelOnly" class="validation-summary"></div>
+
+            <div class="form-field">
+                <label asp-for="Username">Tên đăng nhập</label>
+                <input asp-for="Username" maxlength="50" autocomplete="username" />
+                <span asp-validation-for="Username" class="field-validation"></span>
+            </div>
+
+            <div class="form-field">
+                <label asp-for="Password">Mật khẩu</label>
+                <input asp-for="Password" maxlength="255" autocomplete="current-password" />
+                <span asp-validation-for="Password" class="field-validation"></span>
+            </div>
+
+            <div class="remember-me">
+                <input asp-for="RememberMe" />
+                <label asp-for="RememberMe">Ghi nhớ đăng nhập</label>
+            </div>
+
+            <button type="submit" id="loginButton">Đăng nhập</button>
+        </form>
+
+        <footer class="login-footer">
+            © @DateTime.UtcNow.Year QuangDa ERP
+        </footer>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const form = document.getElementById('loginForm');
+            const button = document.getElementById('loginButton');
+
+            if (form && button) {
+                form.addEventListener('submit', () => {
+                    button.disabled = true;
+                    button.innerText = 'Đang đăng nhập...';
+                });
+            }
+
+            const firstError = document.querySelector('.input-validation-error');
+            if (firstError) {
+                firstError.focus();
+            }
+        })();
+    </script>
+}
