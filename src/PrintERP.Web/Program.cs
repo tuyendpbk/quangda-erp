@@ -18,6 +18,7 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<IPricingService, PricingService>();
 builder.Services.AddScoped<ICustomerService, CustomerService>();
+builder.Services.AddScoped<IEmployeeService, EmployeeService>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -42,6 +43,12 @@ builder.Services.AddAuthorization(options =>
         policy.RequireClaim("Permission", OrderPermissions.View));
     options.AddPolicy("OrderStatusUpdate", policy =>
         policy.RequireClaim("Permission", OrderPermissions.StatusUpdate));
+    options.AddPolicy("EmployeeView", policy =>
+        policy.RequireClaim("Permission", EmployeePermissions.View));
+    options.AddPolicy("EmployeeCreate", policy =>
+        policy.RequireClaim("Permission", EmployeePermissions.Create));
+    options.AddPolicy("EmployeeEdit", policy =>
+        policy.RequireClaim("Permission", EmployeePermissions.Edit));
 });
 
 var app = builder.Build();

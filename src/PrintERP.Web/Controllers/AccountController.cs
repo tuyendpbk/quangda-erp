@@ -16,12 +16,12 @@ public class AccountController(IAuthService authService, ILogger<AccountControll
     private static readonly IReadOnlyDictionary<string, string[]> RolePermissions =
         new ReadOnlyDictionary<string, string[]>(new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
-            [DashboardRoles.Admin] = [DashboardPermissions.View, OrderPermissions.Create, OrderPermissions.View, OrderPermissions.Edit, OrderPermissions.StatusUpdate, PaymentPermissions.Create, StockOutPermissions.Create],
-            [DashboardRoles.Manager] = [DashboardPermissions.View, OrderPermissions.Create, OrderPermissions.View, OrderPermissions.Edit, OrderPermissions.StatusUpdate, StockOutPermissions.Create],
-            [DashboardRoles.Sales] = [DashboardPermissions.View, OrderPermissions.Create, OrderPermissions.View, OrderPermissions.Edit],
-            [DashboardRoles.Warehouse] = [DashboardPermissions.View, OrderPermissions.View, StockOutPermissions.Create],
-            [DashboardRoles.Accountant] = [DashboardPermissions.View, OrderPermissions.View, PaymentPermissions.Create],
-            [DashboardRoles.Production] = [DashboardPermissions.View, OrderPermissions.View]
+            [DashboardRoles.Admin] = [DashboardPermissions.View, OrderPermissions.Create, OrderPermissions.View, OrderPermissions.Edit, OrderPermissions.StatusUpdate, PaymentPermissions.Create, StockOutPermissions.Create, EmployeePermissions.View, EmployeePermissions.Create, EmployeePermissions.Edit, EmployeePermissions.ResetPassword],
+            [DashboardRoles.Manager] = [DashboardPermissions.View, OrderPermissions.Create, OrderPermissions.View, OrderPermissions.Edit, OrderPermissions.StatusUpdate, StockOutPermissions.Create, EmployeePermissions.View, EmployeePermissions.Edit],
+            [DashboardRoles.Sales] = [DashboardPermissions.View, OrderPermissions.Create, OrderPermissions.View, OrderPermissions.Edit, EmployeePermissions.View],
+            [DashboardRoles.Warehouse] = [DashboardPermissions.View, OrderPermissions.View, StockOutPermissions.Create, EmployeePermissions.View],
+            [DashboardRoles.Accountant] = [DashboardPermissions.View, OrderPermissions.View, PaymentPermissions.Create, EmployeePermissions.View],
+            [DashboardRoles.Production] = [DashboardPermissions.View, OrderPermissions.View, EmployeePermissions.View]
         });
 
     [HttpGet]

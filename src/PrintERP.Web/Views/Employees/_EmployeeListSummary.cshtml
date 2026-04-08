@@ -1,0 +1,28 @@
+@model PrintERP.Web.Models.ViewModels.EmployeeListViewModel
+
+<div class="row g-3 mb-3">
+    <div class="col-12 col-sm-4">
+        <div class="card h-100">
+            <div class="card-body">
+                <div class="text-muted">Tổng số nhân viên</div>
+                <div class="h4 mb-0">@Model.TotalEmployees</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-4">
+        <div class="card h-100 border-success-subtle">
+            <div class="card-body">
+                <div class="text-muted">Đang hoạt động</div>
+                <div class="h4 mb-0 text-success">@Model.ActiveEmployees</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-4">
+        <div class="card h-100 border-secondary-subtle">
+            <div class="card-body">
+                <div class="text-muted">Ngừng hoạt động</div>
+                <div class="h4 mb-0 text-secondary">@Model.InactiveEmployees</div>
+            </div>
+        </div>
+    </div>
+</div>
