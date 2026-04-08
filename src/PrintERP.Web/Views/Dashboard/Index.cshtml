@@ -4,265 +4,98 @@
     ViewData["Title"] = "Dashboard";
     var role = User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value ?? "N/A";
     var errorMessage = TempData["DashboardError"] as string;
+    var fullName = User.FindFirst("FullName")?.Value ?? User.Identity?.Name;
 }
 
-<section class="dashboard-page">
-    <header class="dashboard-header">
-        <div>
-            <h1>Dashboard vận hành</h1>
-            <p>Xin chào <strong>@(User.FindFirst("FullName")?.Value ?? User.Identity?.Name)</strong> · Role: <strong>@role</strong></p>
+<section class="dashboard-page py-4 py-lg-5">
+    <div class="container-fluid px-lg-4">
+        <div class="card border-0 shadow-sm overflow-hidden mb-4 dashboard-header-card">
+            <div class="card-body p-4 d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                <div>
+                    <p class="text-uppercase text-primary fw-semibold small mb-2">Operations Center</p>
+                    <h1 class="h3 fw-bold mb-1">Dashboard vận hành</h1>
+                    <p class="text-secondary mb-0">Xin chào <strong>@fullName</strong> · Vai trò: <strong>@role</strong></p>
+                </div>
+                <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+                    @Html.AntiForgeryToken()
+                    <button type="submit" class="btn btn-outline-danger rounded-pill px-4">
+                        <i class="bi bi-box-arrow-right me-2"></i>Đăng xuất
+                    </button>
+                </form>
+            </div>
         </div>
-        <form asp-controller="Account" asp-action="Logout" method="post">
-            @Html.AntiForgeryToken()
-            <button type="submit">Đăng xuất</button>
-        </form>
-    </header>
 
-    @if (!string.IsNullOrWhiteSpace(errorMessage))
-    {
-        <div class="dashboard-alert">@errorMessage</div>
-    }
-
-    <form asp-action="Index" asp-controller="Dashboard" method="get" class="dashboard-filter">
-        <label>
-            Thời gian
-            <select asp-for="Filter.PeriodType" id="periodTypeSelect">
-                <option value="@DashboardPeriodTypes.Today">Hôm nay</option>
-                <option value="@DashboardPeriodTypes.Last7Days">7 ngày gần nhất</option>
-                <option value="@DashboardPeriodTypes.Last30Days">30 ngày gần nhất</option>
-                <option value="@DashboardPeriodTypes.ThisMonth">Tháng này</option>
-                <option value="@DashboardPeriodTypes.ThisQuarter">Quý này</option>
-                <option value="@DashboardPeriodTypes.ThisYear">Năm nay</option>
-                <option value="@DashboardPeriodTypes.Custom">Tùy chọn</option>
-            </select>
-        </label>
-
-        <label class="custom-range-field">
-            Từ ngày
-            <input asp-for="Filter.FromDate" type="date" />
-            <span asp-validation-for="Filter.FromDate" class="field-validation"></span>
-        </label>
-
-        <label class="custom-range-field">
-            Đến ngày
-            <input asp-for="Filter.ToDate" type="date" />
-            <span asp-validation-for="Filter.ToDate" class="field-validation"></span>
-        </label>
-
-        <button type="submit">Áp dụng</button>
-    </form>
-
-    <section class="kpi-grid">
-        <a class="kpi-card" href="/Orders/Index"><span>Tổng đơn hàng</span><strong>@Model.TotalOrders</strong></a>
-        <a class="kpi-card" href="/Orders/Index?status=NEW"><span>Đơn hàng mới</span><strong>@Model.NewOrders</strong></a>
-        <a class="kpi-card" href="/Orders/Index?status=PRODUCING"><span>Đang sản xuất</span><strong>@Model.ProducingOrders</strong></a>
-        <a class="kpi-card warning" href="/Orders/Index?nearDue=true"><span>Đơn sắp giao</span><strong>@Model.NearDueOrders</strong></a>
-        <a class="kpi-card danger" href="/Orders/Index?isOverdue=true"><span>Đơn trễ hạn</span><strong>@Model.OverdueOrders</strong></a>
-        <a class="kpi-card" href="/Reports/Revenue"><span>Doanh thu</span><strong>@Model.Revenue.ToString("N0") đ</strong></a>
-        <div class="kpi-card"><span>Đã thanh toán</span><strong>@Model.PaidAmount.ToString("N0") đ</strong></div>
-        <div class="kpi-card"><span>Công nợ còn lại</span><strong>@Model.RemainingDebt.ToString("N0") đ</strong></div>
-        <a class="kpi-card danger" href="/Materials/Index?lowStock=true"><span>Vật tư sắp hết</span><strong>@Model.LowStockMaterials</strong></a>
-    </section>
-
-    <section class="dashboard-panels">
-        <article class="panel">
-            <h2>Biểu đồ doanh thu</h2>
-            @if (Model.RevenueChart.Count == 0)
-            {
-                <p class="empty-state">Không có dữ liệu</p>
-            }
-            else
-            {
-                <ul class="bar-list">
-                    @foreach (var item in Model.RevenueChart)
-                    {
-                        <li><span>@item.Label</span><strong>@item.Revenue.ToString("N0") đ</strong></li>
-                    }
-                </ul>
-            }
-        </article>
-
-        <article class="panel">
-            <h2>Trạng thái đơn hàng</h2>
-            @if (Model.OrderStatusChart.Count == 0)
-            {
-                <p class="empty-state">Không có dữ liệu</p>
-            }
-            else
-            {
-                <ul class="status-list">
-                    @foreach (var item in Model.OrderStatusChart)
-                    {
-                        <li><span>@item.Status</span><strong>@item.Count</strong></li>
-                    }
-                </ul>
-            }
-        </article>
-
-        @if (Model.ShowPaymentBlocks)
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
-            <article class="panel">
-                <h2>Tình hình thanh toán</h2>
-                @foreach (var item in Model.PaymentChart)
-                {
-                    <ul class="status-list">
-                        <li><span>Tổng đơn</span><strong>@item.TotalOrderAmount.ToString("N0") đ</strong></li>
-                        <li><span>Đã thanh toán</span><strong>@item.PaidAmount.ToString("N0") đ</strong></li>
-                        <li><span>Còn nợ</span><strong>@item.RemainingDebt.ToString("N0") đ</strong></li>
-                    </ul>
-                }
-            </article>
+            <div class="alert alert-danger border-0 shadow-sm" role="alert">@errorMessage</div>
         }
 
-        @if (Model.ShowForecastBlock)
-        {
-            <article class="panel">
-                <h2>Dự báo doanh thu kỳ tới</h2>
-                <p class="forecast">@(Model.ForecastRevenue?.ToString("N0") ?? "0") đ</p>
-            </article>
-        }
-    </section>
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body p-4">
+                <form asp-action="Index" asp-controller="Dashboard" method="get" class="row g-3 align-items-end">
+                    <div class="col-12 col-md-4 col-xl-3">
+                        <label asp-for="Filter.PeriodType" class="form-label fw-medium">Thời gian</label>
+                        <select asp-for="Filter.PeriodType" id="periodTypeSelect" class="form-select">
+                            <option value="@DashboardPeriodTypes.Today">Hôm nay</option>
+                            <option value="@DashboardPeriodTypes.Last7Days">7 ngày gần nhất</option>
+                            <option value="@DashboardPeriodTypes.Last30Days">30 ngày gần nhất</option>
+                            <option value="@DashboardPeriodTypes.ThisMonth">Tháng này</option>
+                            <option value="@DashboardPeriodTypes.ThisQuarter">Quý này</option>
+                            <option value="@DashboardPeriodTypes.ThisYear">Năm nay</option>
+                            <option value="@DashboardPeriodTypes.Custom">Tùy chọn</option>
+                        </select>
+                    </div>
 
-    <section class="dashboard-panels">
-        <article class="panel table-panel">
-            <h2>Đơn hàng mới nhất</h2>
-            <table>
-                <thead><tr><th>Mã đơn</th><th>Ngày tạo</th><th>Khách hàng</th><th>Hạn giao</th><th>Trạng thái</th><th>Tổng tiền</th></tr></thead>
-                <tbody>
-                @if (Model.RecentOrders.Count == 0)
-                {
-                    <tr><td colspan="6" class="empty-state">Không có dữ liệu</td></tr>
-                }
-                else
-                {
-                    @foreach (var item in Model.RecentOrders)
-                    {
-                        <tr>
-                            <td><a href="/Orders/Details/@item.Id">@item.OrderCode</a></td>
-                            <td>@item.OrderDate.ToString("dd/MM/yyyy")</td>
-                            <td>@item.CustomerName</td>
-                            <td>@item.DeliveryDate.ToString("dd/MM/yyyy")</td>
-                            <td>@item.Status</td>
-                            <td>@item.TotalAmount.ToString("N0")</td>
-                        </tr>
-                    }
-                }
-                </tbody>
-            </table>
-        </article>
+                    <div class="col-12 col-md-4 col-xl-3 custom-range-field">
+                        <label asp-for="Filter.FromDate" class="form-label fw-medium">Từ ngày</label>
+                        <input asp-for="Filter.FromDate" type="date" class="form-control" />
+                        <span asp-validation-for="Filter.FromDate" class="text-danger small"></span>
+                    </div>
 
-        <article class="panel table-panel">
-            <h2>Đơn sắp giao / trễ hạn</h2>
-            <table>
-                <thead><tr><th>Mã đơn</th><th>Khách hàng</th><th>Ngày giao</th><th>Trạng thái</th><th>Phụ trách</th><th>Cảnh báo</th></tr></thead>
-                <tbody>
-                @if (Model.DueOrders.Count == 0)
-                {
-                    <tr><td colspan="6" class="empty-state">Không có dữ liệu</td></tr>
-                }
-                else
-                {
-                    @foreach (var item in Model.DueOrders)
-                    {
-                        var warningClass = item.WarningLevel == "OVERDUE" ? "danger-text" : item.WarningLevel == "NEAR_DUE" ? "warning-text" : string.Empty;
-                        <tr>
-                            <td><a href="/Orders/Details/@item.Id">@item.OrderCode</a></td>
-                            <td>@item.CustomerName</td>
-                            <td>@item.DeliveryDate.ToString("dd/MM/yyyy")</td>
-                            <td>@item.Status</td>
-                            <td>@item.Owner</td>
-                            <td class="@warningClass">@item.WarningLevel</td>
-                        </tr>
-                    }
-                }
-                </tbody>
-            </table>
-        </article>
+                    <div class="col-12 col-md-4 col-xl-3 custom-range-field">
+                        <label asp-for="Filter.ToDate" class="form-label fw-medium">Đến ngày</label>
+                        <input asp-for="Filter.ToDate" type="date" class="form-control" />
+                        <span asp-validation-for="Filter.ToDate" class="text-danger small"></span>
+                    </div>
 
-        <article class="panel table-panel">
-            <h2>Vật tư sắp hết</h2>
-            <table>
-                <thead><tr><th>Mã vật tư</th><th>Tên</th><th>Nhóm</th><th>Tồn hiện tại</th><th>Tồn tối thiểu</th><th>Đơn vị</th></tr></thead>
-                <tbody>
-                @if (Model.LowStockItems.Count == 0)
-                {
-                    <tr><td colspan="6" class="empty-state">Không có dữ liệu</td></tr>
-                }
-                else
-                {
-                    @foreach (var item in Model.LowStockItems)
-                    {
-                        <tr>
-                            <td><a href="/Materials/Details/@item.Id">@item.MaterialCode</a></td>
-                            <td>@item.MaterialName</td>
-                            <td>@item.GroupName</td>
-                            <td>@item.CurrentStock</td>
-                            <td>@item.MinStockLevel</td>
-                            <td>@item.Unit</td>
-                        </tr>
-                    }
-                }
-                </tbody>
-            </table>
-        </article>
+                    <div class="col-12 col-xl-3">
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-funnel me-2"></i>Áp dụng bộ lọc
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
 
-        @if (Model.ShowPaymentBlocks)
-        {
-            <article class="panel table-panel">
-                <h2>Thanh toán gần đây</h2>
-                <table>
-                    <thead><tr><th>Ngày</th><th>Mã đơn</th><th>Khách hàng</th><th>Số tiền</th><th>Phương thức</th></tr></thead>
-                    <tbody>
-                    @if (Model.RecentPayments.Count == 0)
-                    {
-                        <tr><td colspan="5" class="empty-state">Không có dữ liệu</td></tr>
-                    }
-                    else
-                    {
-                        @foreach (var item in Model.RecentPayments)
-                        {
-                            <tr>
-                                <td>@item.PaymentDate.ToString("dd/MM/yyyy")</td>
-                                <td>@item.OrderCode</td>
-                                <td>@item.CustomerName</td>
-                                <td>@item.Amount.ToString("N0")</td>
-                                <td>@item.Method</td>
-                            </tr>
-                        }
-                    }
-                    </tbody>
-                </table>
-            </article>
-        }
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-sm-6 col-xl-3"><a class="text-decoration-none" href="/Orders/Index"> <div class="card border-0 shadow-sm h-100 kpi-card"><div class="card-body"><p class="small text-secondary mb-1">Tổng đơn hàng</p><p class="h4 mb-0">@Model.TotalOrders</p></div></div></a></div>
+            <div class="col-12 col-sm-6 col-xl-3"><a class="text-decoration-none" href="/Orders/Index?status=NEW"> <div class="card border-0 shadow-sm h-100 kpi-card"><div class="card-body"><p class="small text-secondary mb-1">Đơn hàng mới</p><p class="h4 mb-0">@Model.NewOrders</p></div></div></a></div>
+            <div class="col-12 col-sm-6 col-xl-3"><a class="text-decoration-none" href="/Orders/Index?status=PRODUCING"> <div class="card border-0 shadow-sm h-100 kpi-card"><div class="card-body"><p class="small text-secondary mb-1">Đang sản xuất</p><p class="h4 mb-0">@Model.ProducingOrders</p></div></div></a></div>
+            <div class="col-12 col-sm-6 col-xl-3"><a class="text-decoration-none" href="/Orders/Index?nearDue=true"> <div class="card border-0 shadow-sm h-100 kpi-card"><div class="card-body"><p class="small text-secondary mb-1">Đơn sắp giao</p><p class="h4 mb-0">@Model.NearDueOrders</p></div></div></a></div>
+            <div class="col-12 col-sm-6 col-xl-3"><a class="text-decoration-none" href="/Orders/Index?isOverdue=true"> <div class="card border-0 shadow-sm h-100 kpi-card kpi-card-danger"><div class="card-body"><p class="small text-secondary mb-1">Đơn trễ hạn</p><p class="h4 mb-0">@Model.OverdueOrders</p></div></div></a></div>
+            <div class="col-12 col-sm-6 col-xl-3"><a class="text-decoration-none" href="/Reports/Revenue"> <div class="card border-0 shadow-sm h-100 kpi-card"><div class="card-body"><p class="small text-secondary mb-1">Doanh thu</p><p class="h4 mb-0">@Model.Revenue.ToString("N0") đ</p></div></div></a></div>
+            <div class="col-12 col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100 kpi-card"><div class="card-body"><p class="small text-secondary mb-1">Đã thanh toán</p><p class="h4 mb-0">@Model.PaidAmount.ToString("N0") đ</p></div></div></div>
+            <div class="col-12 col-sm-6 col-xl-3"><div class="card border-0 shadow-sm h-100 kpi-card"><div class="card-body"><p class="small text-secondary mb-1">Công nợ còn lại</p><p class="h4 mb-0">@Model.RemainingDebt.ToString("N0") đ</p></div></div></div>
+            <div class="col-12 col-sm-6 col-xl-3"><a class="text-decoration-none" href="/Materials/Index?lowStock=true"> <div class="card border-0 shadow-sm h-100 kpi-card kpi-card-danger"><div class="card-body"><p class="small text-secondary mb-1">Vật tư sắp hết</p><p class="h4 mb-0">@Model.LowStockMaterials</p></div></div></a></div>
+        </div>
 
-        @if (Model.ShowTopCustomers)
-        {
-            <article class="panel table-panel">
-                <h2>Top khách hàng</h2>
-                <table>
-                    <thead><tr><th>Khách hàng</th><th>Số đơn</th><th>Doanh thu</th><th>Công nợ</th></tr></thead>
-                    <tbody>
-                    @if (Model.TopCustomers.Count == 0)
-                    {
-                        <tr><td colspan="4" class="empty-state">Không có dữ liệu</td></tr>
-                    }
-                    else
-                    {
-                        @foreach (var item in Model.TopCustomers)
-                        {
-                            <tr>
-                                <td>@item.CustomerName</td>
-                                <td>@item.OrderCount</td>
-                                <td>@item.Revenue.ToString("N0")</td>
-                                <td>@item.RemainingDebt.ToString("N0")</td>
-                            </tr>
-                        }
-                    }
-                    </tbody>
-                </table>
-            </article>
-        }
-    </section>
+        <div class="row g-3 mb-4">
+            <div class="col-12 col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><h2 class="h5 fw-semibold mb-3">Biểu đồ doanh thu</h2>@if (Model.RevenueChart.Count == 0){<p class="text-secondary mb-0">Không có dữ liệu</p>} else {<ul class="list-group list-group-flush">@foreach (var item in Model.RevenueChart){<li class="list-group-item d-flex justify-content-between px-0"><span>@item.Label</span><strong>@item.Revenue.ToString("N0") đ</strong></li>}</ul>}</div></div></div>
+            <div class="col-12 col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><h2 class="h5 fw-semibold mb-3">Trạng thái đơn hàng</h2>@if (Model.OrderStatusChart.Count == 0){<p class="text-secondary mb-0">Không có dữ liệu</p>} else {<ul class="list-group list-group-flush">@foreach (var item in Model.OrderStatusChart){<li class="list-group-item d-flex justify-content-between px-0"><span>@item.Status</span><strong>@item.Count</strong></li>}</ul>}</div></div></div>
+            @if (Model.ShowPaymentBlocks){<div class="col-12 col-lg-6"><div class="card border-0 shadow-sm h-100"><div class="card-body p-4"><h2 class="h5 fw-semibold mb-3">Tình hình thanh toán</h2>@foreach (var item in Model.PaymentChart){<ul class="list-group list-group-flush"><li class="list-group-item d-flex justify-content-between px-0"><span>Tổng đơn</span><strong>@item.TotalOrderAmount.ToString("N0") đ</strong></li><li class="list-group-item d-flex justify-content-between px-0"><span>Đã thanh toán</span><strong>@item.PaidAmount.ToString("N0") đ</strong></li><li class="list-group-item d-flex justify-content-between px-0"><span>Còn nợ</span><strong>@item.RemainingDebt.ToString("N0") đ</strong></li></ul>}</div></div></div>}
+            @if (Model.ShowForecastBlock){<div class="col-12 col-lg-6"><div class="card border-0 shadow-sm h-100 forecast-card"><div class="card-body p-4 d-flex flex-column justify-content-center"><h2 class="h5 fw-semibold mb-2">Dự báo doanh thu kỳ tới</h2><p class="display-6 fw-bold text-primary mb-0">@(Model.ForecastRevenue?.ToString("N0") ?? "0") đ</p></div></div></div>}
+        </div>
+
+        <div class="card border-0 shadow-sm mb-3"><div class="card-body p-0"><div class="px-4 pt-4 pb-2"><h2 class="h5 fw-semibold mb-0">Đơn hàng mới nhất</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Mã đơn</th><th>Ngày tạo</th><th>Khách hàng</th><th>Hạn giao</th><th>Trạng thái</th><th class="text-end">Tổng tiền</th></tr></thead><tbody>@if (Model.RecentOrders.Count == 0){<tr><td colspan="6" class="text-center text-secondary py-4">Không có dữ liệu</td></tr>} else {@foreach (var item in Model.RecentOrders){<tr><td><a href="/Orders/Details/@item.Id" class="fw-semibold link-primary">@item.OrderCode</a></td><td>@item.OrderDate.ToString("dd/MM/yyyy")</td><td>@item.CustomerName</td><td>@item.DeliveryDate.ToString("dd/MM/yyyy")</td><td>@item.Status</td><td class="text-end">@item.TotalAmount.ToString("N0")</td></tr>}}</tbody></table></div></div></div>
+
+        <div class="card border-0 shadow-sm mb-3"><div class="card-body p-0"><div class="px-4 pt-4 pb-2"><h2 class="h5 fw-semibold mb-0">Đơn sắp giao / trễ hạn</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Mã đơn</th><th>Khách hàng</th><th>Ngày giao</th><th>Trạng thái</th><th>Phụ trách</th><th>Cảnh báo</th></tr></thead><tbody>@if (Model.DueOrders.Count == 0){<tr><td colspan="6" class="text-center text-secondary py-4">Không có dữ liệu</td></tr>} else {@foreach (var item in Model.DueOrders){var warningClass = item.WarningLevel == "OVERDUE" ? "text-danger fw-semibold" : item.WarningLevel == "NEAR_DUE" ? "text-warning-emphasis fw-semibold" : string.Empty;<tr><td><a href="/Orders/Details/@item.Id" class="fw-semibold link-primary">@item.OrderCode</a></td><td>@item.CustomerName</td><td>@item.DeliveryDate.ToString("dd/MM/yyyy")</td><td>@item.Status</td><td>@item.Owner</td><td class="@warningClass">@item.WarningLevel</td></tr>}}</tbody></table></div></div></div>
+
+        <div class="card border-0 shadow-sm mb-3"><div class="card-body p-0"><div class="px-4 pt-4 pb-2"><h2 class="h5 fw-semibold mb-0">Vật tư sắp hết</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Mã vật tư</th><th>Tên</th><th>Nhóm</th><th>Tồn hiện tại</th><th>Tồn tối thiểu</th><th>Đơn vị</th></tr></thead><tbody>@if (Model.LowStockItems.Count == 0){<tr><td colspan="6" class="text-center text-secondary py-4">Không có dữ liệu</td></tr>} else {@foreach (var item in Model.LowStockItems){<tr><td><a href="/Materials/Details/@item.Id" class="fw-semibold link-primary">@item.MaterialCode</a></td><td>@item.MaterialName</td><td>@item.GroupName</td><td>@item.CurrentStock</td><td>@item.MinStockLevel</td><td>@item.Unit</td></tr>}}</tbody></table></div></div></div>
+
+        @if (Model.ShowPaymentBlocks){<div class="card border-0 shadow-sm mb-3"><div class="card-body p-0"><div class="px-4 pt-4 pb-2"><h2 class="h5 fw-semibold mb-0">Thanh toán gần đây</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Ngày</th><th>Mã đơn</th><th>Khách hàng</th><th class="text-end">Số tiền</th><th>Phương thức</th></tr></thead><tbody>@if (Model.RecentPayments.Count == 0){<tr><td colspan="5" class="text-center text-secondary py-4">Không có dữ liệu</td></tr>} else {@foreach (var item in Model.RecentPayments){<tr><td>@item.PaymentDate.ToString("dd/MM/yyyy")</td><td>@item.OrderCode</td><td>@item.CustomerName</td><td class="text-end">@item.Amount.ToString("N0")</td><td>@item.Method</td></tr>}}</tbody></table></div></div></div>}
+
+        @if (Model.ShowTopCustomers){<div class="card border-0 shadow-sm mb-3"><div class="card-body p-0"><div class="px-4 pt-4 pb-2"><h2 class="h5 fw-semibold mb-0">Top khách hàng</h2></div><div class="table-responsive"><table class="table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Khách hàng</th><th>Số đơn</th><th class="text-end">Doanh thu</th><th class="text-end">Công nợ</th></tr></thead><tbody>@if (Model.TopCustomers.Count == 0){<tr><td colspan="4" class="text-center text-secondary py-4">Không có dữ liệu</td></tr>} else {@foreach (var item in Model.TopCustomers){<tr><td>@item.CustomerName</td><td>@item.OrderCount</td><td class="text-end">@item.Revenue.ToString("N0")</td><td class="text-end">@item.RemainingDebt.ToString("N0")</td></tr>}}</tbody></table></div></div></div>}
+    </div>
 </section>
 
 @section Scripts {
@@ -273,7 +106,7 @@
 
         const updateCustomRangeVisibility = () => {
             const isCustom = periodTypeSelect.value === '@DashboardPeriodTypes.Custom';
-            customFields.forEach(x => x.style.display = isCustom ? 'grid' : 'none');
+            customFields.forEach(x => x.classList.toggle('d-none', !isCustom));
         };
 
         periodTypeSelect.addEventListener('change', updateCustomRangeVisibility);
