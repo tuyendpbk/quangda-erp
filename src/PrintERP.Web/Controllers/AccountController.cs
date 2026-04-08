@@ -16,9 +16,9 @@ public class AccountController(IAuthService authService, ILogger<AccountControll
     private static readonly IReadOnlyDictionary<string, string[]> RolePermissions =
         new ReadOnlyDictionary<string, string[]>(new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
         {
-            [DashboardRoles.Admin] = [DashboardPermissions.View],
-            [DashboardRoles.Manager] = [DashboardPermissions.View],
-            [DashboardRoles.Sales] = [DashboardPermissions.View],
+            [DashboardRoles.Admin] = [DashboardPermissions.View, OrderPermissions.Create],
+            [DashboardRoles.Manager] = [DashboardPermissions.View, OrderPermissions.Create],
+            [DashboardRoles.Sales] = [DashboardPermissions.View, OrderPermissions.Create],
             [DashboardRoles.Warehouse] = [DashboardPermissions.View],
             [DashboardRoles.Accountant] = [DashboardPermissions.View],
             [DashboardRoles.Production] = [DashboardPermissions.View]
