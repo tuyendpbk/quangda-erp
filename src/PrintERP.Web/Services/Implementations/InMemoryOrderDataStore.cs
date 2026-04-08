@@ -19,7 +19,9 @@ public static class InMemoryOrderDataStore
         new() { Id = 1, Name = "System Administrator" },
         new() { Id = 2, Name = "Factory Manager" },
         new() { Id = 3, Name = "Sales User" },
-        new() { Id = 4, Name = "Warehouse User" }
+        new() { Id = 4, Name = "Warehouse User" },
+        new() { Id = 5, Name = "Accountant User" },
+        new() { Id = 6, Name = "Production User" }
     ];
 
     public static List<ProductCategoryOptionViewModel> ProductCategories { get; } =
@@ -32,7 +34,7 @@ public static class InMemoryOrderDataStore
         new() { Id = 6, Name = "Tờ rơi", DefaultUnit = "XẤP", UseAreaPricing = false }
     ];
 
-    public static List<object> Orders { get; } = [];
+    public static List<OrderDetailViewModel> Orders { get; } = BuildSeedOrders();
 
     public static string NextOrderCode()
     {
@@ -41,6 +43,11 @@ public static class InMemoryOrderDataStore
     }
 
     public static long NextOrderId() => _orderSeq;
+
+    public static void AddOrder(OrderDetailViewModel order)
+    {
+        Orders.Add(order);
+    }
 
     public static (long id, string code) AddCustomer(CustomerQuickCreateViewModel model)
     {
@@ -60,5 +67,168 @@ public static class InMemoryOrderDataStore
         });
 
         return (id, code);
+    }
+
+    private static List<OrderDetailViewModel> BuildSeedOrders()
+    {
+        return
+        [
+            new OrderDetailViewModel
+            {
+                Id = 2000,
+                OrderCode = "ORD20262000",
+                OrderDate = DateTime.Today.AddDays(-7),
+                DeliveryDate = DateTime.Today.AddDays(2),
+                Status = "PRODUCING",
+                PaymentStatus = "PARTIAL",
+                CustomerId = 1001,
+                CustomerName = "Công ty Minh Tâm",
+                CustomerPhone = "0909123456",
+                CustomerEmail = "contact@minhtam.vn",
+                CustomerAddress = "Q1, TP.HCM",
+                SalesEmployeeName = "Sales User",
+                AssignedEmployeeName = "Factory Manager",
+                SubtotalAmount = 15_000_000,
+                DiscountAmount = 500_000,
+                TaxAmount = 1_450_000,
+                TotalAmount = 15_950_000,
+                PaidAmount = 6_000_000,
+                RemainingAmount = 9_950_000,
+                Note = "Ưu tiên giao trước khu vực lễ tân.",
+                Items =
+                [
+                    new OrderDetailItemViewModel
+                    {
+                        Id = 1,
+                        ProductCategoryName = "In bạt",
+                        ItemName = "Backdrop khai trương",
+                        Description = "In bạt hiflex, bo viền",
+                        Width = 3,
+                        Height = 2,
+                        Unit = "M2",
+                        Quantity = 2,
+                        Area = 12,
+                        MaterialDescription = "Hiflex 3M",
+                        PrintType = "UV",
+                        FinishingDescription = "Bo viền + khoen",
+                        EstimatedUnitPrice = 450_000,
+                        EstimatedLineTotal = 5_400_000,
+                        EstimatedCost = 3_100_000,
+                        EstimatedProfit = 2_300_000,
+                        UnitPrice = 460_000,
+                        LineTotal = 5_520_000,
+                        PricingNote = "Override theo yêu cầu in dày",
+                        Note = "Thi công ban đêm"
+                    },
+                    new OrderDetailItemViewModel
+                    {
+                        Id = 2,
+                        ProductCategoryName = "Bảng alu",
+                        ItemName = "Bảng hiệu mặt tiền",
+                        Description = "Khung sắt hộp + alu",
+                        Width = 4,
+                        Height = 1.2m,
+                        Unit = "TẤM",
+                        Quantity = 1,
+                        Area = 4.8m,
+                        MaterialDescription = "Alu ngoài trời",
+                        PrintType = "Decal cán",
+                        FinishingDescription = "Gia cố khung",
+                        EstimatedUnitPrice = 8_000_000,
+                        EstimatedLineTotal = 8_000_000,
+                        EstimatedCost = 5_900_000,
+                        EstimatedProfit = 2_100_000,
+                        UnitPrice = 8_000_000,
+                        LineTotal = 8_000_000,
+                        Note = "Có bảo hành 12 tháng"
+                    }
+                ],
+                Payments =
+                [
+                    new OrderPaymentViewModel
+                    {
+                        Id = 1,
+                        PaymentDate = DateTime.Today.AddDays(-5),
+                        Amount = 4_000_000,
+                        Method = "BANK",
+                        ReferenceCode = "VCB-001991",
+                        Note = "Đặt cọc lần 1",
+                        CreatedBy = "Accountant User"
+                    },
+                    new OrderPaymentViewModel
+                    {
+                        Id = 2,
+                        PaymentDate = DateTime.Today.AddDays(-3),
+                        Amount = 2_000_000,
+                        Method = "CASH",
+                        ReferenceCode = "PT000231",
+                        Note = "Thu bổ sung",
+                        CreatedBy = "Accountant User"
+                    }
+                ],
+                MaterialUsages =
+                [
+                    new OrderMaterialUsageViewModel
+                    {
+                        OrderItemName = "Backdrop khai trương",
+                        MaterialId = 10,
+                        MaterialName = "Bạt hiflex",
+                        PlannedQuantity = 12,
+                        ActualQuantity = 12.4m,
+                        UnitCost = 120_000,
+                        TotalCost = 1_488_000,
+                        Note = "Hao hụt mép"
+                    },
+                    new OrderMaterialUsageViewModel
+                    {
+                        OrderItemName = "Bảng hiệu mặt tiền",
+                        MaterialId = 22,
+                        MaterialName = "Alu ngoài trời",
+                        PlannedQuantity = 5,
+                        ActualQuantity = 5,
+                        UnitCost = 650_000,
+                        TotalCost = 3_250_000
+                    }
+                ],
+                StockOuts =
+                [
+                    new OrderStockOutViewModel
+                    {
+                        Id = 7001,
+                        Code = "SO-7001",
+                        StockOutDate = DateTime.Today.AddDays(-2),
+                        Purpose = "Xuất sản xuất đơn ORD20262000",
+                        CreatedBy = "Warehouse User",
+                        TotalAmount = 4_738_000
+                    }
+                ],
+                StatusHistories =
+                [
+                    new OrderStatusHistoryViewModel
+                    {
+                        ChangedAt = DateTime.Today.AddDays(-7).AddHours(8),
+                        OldStatus = null,
+                        NewStatus = "NEW",
+                        ChangedBy = "Sales User",
+                        Note = "Tạo đơn"
+                    },
+                    new OrderStatusHistoryViewModel
+                    {
+                        ChangedAt = DateTime.Today.AddDays(-6).AddHours(9),
+                        OldStatus = "NEW",
+                        NewStatus = "DESIGN",
+                        ChangedBy = "Factory Manager"
+                    },
+                    new OrderStatusHistoryViewModel
+                    {
+                        ChangedAt = DateTime.Today.AddDays(-4).AddHours(15),
+                        OldStatus = "DESIGN",
+                        NewStatus = "PRODUCING",
+                        ChangedBy = "Production User",
+                        Note = "Đã duyệt mockup"
+                    }
+                ]
+            }
+        ];
     }
 }

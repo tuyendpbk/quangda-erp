@@ -33,6 +33,8 @@ builder.Services.AddAuthorization(options =>
         policy.RequireClaim("Permission", DashboardPermissions.View));
     options.AddPolicy("OrderCreate", policy =>
         policy.RequireClaim("Permission", OrderPermissions.Create));
+    options.AddPolicy("OrderView", policy =>
+        policy.RequireClaim("Permission", OrderPermissions.View));
 });
 
 var app = builder.Build();

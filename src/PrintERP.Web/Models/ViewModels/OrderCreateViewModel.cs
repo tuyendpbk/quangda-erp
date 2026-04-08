@@ -2,11 +2,6 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PrintERP.Web.Models.ViewModels;
 
-public static class OrderPermissions
-{
-    public const string Create = "ORDER_CREATE";
-}
-
 public class OrderCreateViewModel : IValidatableObject
 {
     public string OrderCode { get; set; } = string.Empty;

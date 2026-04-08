@@ -5,10 +5,11 @@ using PrintERP.Web.Services.Interfaces;
 
 namespace PrintERP.Web.Controllers;
 
-[Authorize(Policy = "OrderCreate")]
+[Authorize]
 public class OrdersController(IOrderService orderService, IPricingService pricingService, ICustomerService customerService, ILogger<OrdersController> logger) : Controller
 {
     [HttpGet]
+    [Authorize(Policy = "OrderCreate")]
     public async Task<IActionResult> Create(CancellationToken cancellationToken)
     {
         var model = await orderService.BuildCreatePageAsync(User, cancellationToken);
@@ -16,6 +17,7 @@ public class OrdersController(IOrderService orderService, IPricingService pricin
     }
 
     [HttpPost]
+    [Authorize(Policy = "OrderCreate")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(OrderCreatePageViewModel pageModel, string submitAction, CancellationToken cancellationToken)
     {
@@ -44,10 +46,11 @@ public class OrdersController(IOrderService orderService, IPricingService pricin
             return RedirectToAction(nameof(Create));
         }
 
-        return RedirectToAction(nameof(Detail), new { id = result.OrderId });
+        return RedirectToAction(nameof(Details), new { id = result.OrderId });
     }
 
     [HttpPost]
+    [Authorize(Policy = "OrderCreate")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> EstimateItem([FromBody] OrderItemEstimateRequest request, CancellationToken cancellationToken)
     {
@@ -61,6 +64,7 @@ public class OrdersController(IOrderService orderService, IPricingService pricin
     }
 
     [HttpPost]
+    [Authorize(Policy = "OrderCreate")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> QuickCreateCustomer([FromBody] CustomerQuickCreateViewModel model, CancellationToken cancellationToken)
     {
@@ -83,9 +87,26 @@ public class OrdersController(IOrderService orderService, IPricingService pricin
     }
 
     [HttpGet]
-    public IActionResult Detail(long id)
+    [Authorize(Policy = "OrderView")]
+    public async Task<IActionResult> Details(long id, CancellationToken cancellationToken)
     {
-        var message = TempData["SuccessMessage"]?.ToString() ?? "Đã lưu đơn hàng.";
-        return Content($"Order Detail #{id}. {message}");
+        var model = await orderService.GetDetailAsync(id, User, cancellationToken);
+        if (model is null)
+        {
+            return NotFound("Không tìm thấy đơn hàng.");
+        }
+
+        if (model.RemainingAmount < 0)
+        {
+            logger.LogWarning("Invalid payment summary for order {OrderId}", id);
+            return BadRequest("Dữ liệu thanh toán không hợp lệ");
+        }
+
+        ViewBag.SuccessMessage = TempData["SuccessMessage"]?.ToString();
+        return View(model);
     }
+
+    [HttpGet]
+    [Authorize(Policy = "OrderView")]
+    public Task<IActionResult> Detail(long id, CancellationToken cancellationToken) => Details(id, cancellationToken);
 }
