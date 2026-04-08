@@ -10,6 +10,9 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAuthService, InMemoryAuthService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddScoped<IPricingService, PricingService>();
+builder.Services.AddScoped<ICustomerService, CustomerService>();
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -28,6 +31,8 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("DashboardView", policy =>
         policy.RequireClaim("Permission", DashboardPermissions.View));
+    options.AddPolicy("OrderCreate", policy =>
+        policy.RequireClaim("Permission", OrderPermissions.Create));
 });
 
 var app = builder.Build();

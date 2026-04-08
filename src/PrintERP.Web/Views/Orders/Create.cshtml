@@ -1,0 +1,343 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model PrintERP.Web.Models.ViewModels.OrderCreatePageViewModel
+@{
+    ViewData["Title"] = "Create Order";
+}
+
+<div class="container py-4 order-create-page">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h2 class="mb-1">Create Order</h2>
+            <div class="text-muted">SCR-ORD-CRT-01</div>
+        </div>
+        <a class="btn btn-outline-secondary" asp-controller="Dashboard" asp-action="Index">Quay lại</a>
+    </div>
+
+    <form method="post" asp-action="Create" id="createOrderForm">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="card mb-3">
+            <div class="card-header">1. Thông tin đầu đơn</div>
+            <div class="card-body row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Mã đơn hàng</label>
+                    <input class="form-control" asp-for="Order.OrderCode" readonly>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Ngày tạo đơn</label>
+                    <input class="form-control" asp-for="Order.OrderDate" type="date">
+                    <span asp-validation-for="Order.OrderDate" class="text-danger"></span>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Ngày giao</label>
+                    <input class="form-control" asp-for="Order.DeliveryDate" type="date">
+                    <span asp-validation-for="Order.DeliveryDate" class="text-danger"></span>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Nhân viên sales</label>
+                    <select class="form-select" asp-for="Order.SalesEmployeeId" asp-items="@(new SelectList(Model.Employees, "Id", "Name"))">
+                        <option value="">-- Chọn --</option>
+                    </select>
+                    <span asp-validation-for="Order.SalesEmployeeId" class="text-danger"></span>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Nhân viên phụ trách</label>
+                    <select class="form-select" asp-for="Order.AssignedEmployeeId" asp-items="@(new SelectList(Model.Employees, "Id", "Name"))">
+                        <option value="">-- Chọn --</option>
+                    </select>
+                </div>
+                <div class="col-md-9">
+                    <label class="form-label">Ghi chú đơn hàng</label>
+                    <textarea class="form-control" asp-for="Order.Note" rows="2"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>2. Thông tin khách hàng</span>
+                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#quickCustomerModal">Thêm khách hàng nhanh</button>
+            </div>
+            <div class="card-body row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Khách hàng</label>
+                    <select class="form-select" asp-for="Order.CustomerId" id="customerSelect">
+                        <option value="">-- Chọn khách hàng --</option>
+                        @foreach (var c in Model.Customers)
+                        {
+                            <option value="@c.Id" data-phone="@c.Phone" data-email="@c.Email" data-address="@c.Address" data-tax="@c.TaxCode" data-debt="@c.CurrentDebt" data-name="@c.Name">@c.Name (@c.Code)</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Order.CustomerId" class="text-danger"></span>
+                </div>
+                <div class="col-md-6">
+                    <div class="border rounded p-3 bg-light" id="customerInfoBlock">
+                        <div><strong>Tên:</strong> <span data-field="name">-</span></div>
+                        <div><strong>SĐT:</strong> <span data-field="phone">-</span></div>
+                        <div><strong>Email:</strong> <span data-field="email">-</span></div>
+                        <div><strong>Địa chỉ:</strong> <span data-field="address">-</span></div>
+                        <div><strong>MST:</strong> <span data-field="tax">-</span></div>
+                        <div><strong>Công nợ:</strong> <span data-field="debt">0</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>3. Danh sách chi tiết hạng mục đơn hàng</span>
+                <button type="button" class="btn btn-sm btn-success" id="addItemBtn">Thêm dòng</button>
+            </div>
+            <div class="card-body table-responsive">
+                <table class="table table-bordered table-sm align-middle" id="itemsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>STT</th><th>Loại SP</th><th>Tên hạng mục</th><th>Mô tả</th><th>Rộng</th><th>Cao</th><th>Đơn vị</th><th>SL</th><th>Diện tích</th><th>Chất liệu</th><th>Loại in</th><th>Gia công</th><th>DG estimate</th><th>TT estimate</th><th>Giá vốn</th><th>Lợi nhuận</th><th>DG chốt</th><th>TT chốt</th><th>Ghi chú giá</th><th>Ghi chú</th><th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">4. Tổng tiền đơn hàng</div>
+            <div class="card-body row g-3 justify-content-end">
+                <div class="col-md-3"><label>Tạm tính</label><input class="form-control money" asp-for="Order.SubtotalAmount" id="subtotal" readonly></div>
+                <div class="col-md-3"><label>Giảm giá</label><input class="form-control money" asp-for="Order.DiscountAmount" id="discount"></div>
+                <div class="col-md-3"><label>Thuế</label><input class="form-control money" asp-for="Order.TaxAmount" id="tax"></div>
+                <div class="col-md-3"><label>Tổng thanh toán</label><input class="form-control money" asp-for="Order.TotalAmount" id="total" readonly></div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mb-5">
+            <button type="submit" class="btn btn-primary" name="submitAction" value="save" id="saveBtn">Lưu đơn hàng</button>
+            <button type="submit" class="btn btn-outline-primary" name="submitAction" value="save-new" id="saveNewBtn">Lưu và tạo mới</button>
+            <a class="btn btn-outline-secondary" asp-controller="Dashboard" asp-action="Index">Quay lại</a>
+        </div>
+    </form>
+</div>
+
+<div class="modal fade" id="quickCustomerModal" tabindex="-1">
+    <div class="modal-dialog"><div class="modal-content">
+        <div class="modal-header"><h5 class="modal-title">Thêm khách hàng nhanh</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body row g-2">
+            <div class="col-12"><input class="form-control" id="qcName" placeholder="Tên khách hàng"></div>
+            <div class="col-12"><input class="form-control" id="qcPhone" placeholder="SĐT"></div>
+            <div class="col-12"><input class="form-control" id="qcEmail" placeholder="Email"></div>
+            <div class="col-12"><input class="form-control" id="qcAddress" placeholder="Địa chỉ"></div>
+            <div class="col-12"><input class="form-control" id="qcTaxCode" placeholder="MST"></div>
+            <div class="col-12 text-danger small" id="quickCustomerError"></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-primary" type="button" id="quickCustomerSaveBtn">Lưu khách hàng</button></div>
+    </div></div>
+</div>
+
+<template id="itemRowTemplate">
+<tr>
+    <td class="row-index"></td>
+    <td><select class="form-select form-select-sm item-product"></select></td>
+    <td><input class="form-control form-control-sm item-name" /></td>
+    <td><input class="form-control form-control-sm item-description" /></td>
+    <td><input type="number" min="0" step="0.001" class="form-control form-control-sm item-width" /></td>
+    <td><input type="number" min="0" step="0.001" class="form-control form-control-sm item-height" /></td>
+    <td><input class="form-control form-control-sm item-unit" /></td>
+    <td><input type="number" min="0" step="0.001" class="form-control form-control-sm item-quantity" value="1" /></td>
+    <td><input class="form-control form-control-sm item-area" readonly /></td>
+    <td><input class="form-control form-control-sm item-material" /></td>
+    <td><input class="form-control form-control-sm item-printtype" /></td>
+    <td><input class="form-control form-control-sm item-finishing" /></td>
+    <td><input class="form-control form-control-sm item-est-unit" readonly /></td>
+    <td><input class="form-control form-control-sm item-est-total" readonly /></td>
+    <td><input class="form-control form-control-sm item-est-cost" readonly /></td>
+    <td><input class="form-control form-control-sm item-est-profit" readonly /></td>
+    <td><input type="number" min="0" step="0.001" class="form-control form-control-sm item-unit-price" /></td>
+    <td><input class="form-control form-control-sm item-line-total" readonly /></td>
+    <td><input class="form-control form-control-sm item-pricing-note" /></td>
+    <td><input class="form-control form-control-sm item-note" /></td>
+    <td class="text-nowrap">
+        <button type="button" class="btn btn-sm btn-outline-primary estimate-btn">Tính giá</button>
+        <button type="button" class="btn btn-sm btn-outline-danger remove-btn">Xóa</button>
+    </td>
+</tr>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const customers = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Customers));
+        const productCategories = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductCategories));
+        const initialItems = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Order.Items));
+        const token = document.querySelector('input[name="__RequestVerificationToken"]').value;
+
+        const tbody = document.querySelector('#itemsTable tbody');
+        const template = document.querySelector('#itemRowTemplate');
+
+        function fmt(n){ return Number(n || 0).toFixed(0); }
+
+        function createCategoryOptions(select) {
+            select.innerHTML = '<option value="">-- Loại --</option>' + productCategories.map(x => `<option value="${x.Id}" data-unit="${x.DefaultUnit}">${x.Name}</option>`).join('');
+        }
+
+        function bindRow(row, item = null) {
+            createCategoryOptions(row.querySelector('.item-product'));
+            const inputs = row.querySelectorAll('input,select');
+            inputs.forEach(el => el.addEventListener('change', () => { recalcRow(row); recalcTotals(); }));
+            row.querySelector('.estimate-btn').addEventListener('click', () => estimateRow(row));
+            row.querySelector('.remove-btn').addEventListener('click', () => { row.remove(); renumber(); recalcTotals(); syncNames(); });
+
+            if (item) {
+                row.querySelector('.item-product').value = item.ProductCategoryId || '';
+                row.querySelector('.item-name').value = item.ItemName || '';
+                row.querySelector('.item-description').value = item.Description || '';
+                row.querySelector('.item-width').value = item.Width || '';
+                row.querySelector('.item-height').value = item.Height || '';
+                row.querySelector('.item-unit').value = item.Unit || '';
+                row.querySelector('.item-quantity').value = item.Quantity || 1;
+                row.querySelector('.item-area').value = fmt(item.Area);
+                row.querySelector('.item-unit-price').value = item.UnitPrice || 0;
+                row.querySelector('.item-line-total').value = fmt(item.LineTotal);
+            }
+            recalcRow(row);
+        }
+
+        function addRow(item = null) {
+            const row = template.content.firstElementChild.cloneNode(true);
+            tbody.appendChild(row);
+            bindRow(row, item);
+            renumber();
+            syncNames();
+        }
+
+        function renumber() {
+            [...tbody.querySelectorAll('tr')].forEach((r, idx) => r.querySelector('.row-index').textContent = idx + 1);
+        }
+
+        function recalcRow(row) {
+            const quantity = parseFloat(row.querySelector('.item-quantity').value || '0');
+            const width = parseFloat(row.querySelector('.item-width').value || '0');
+            const height = parseFloat(row.querySelector('.item-height').value || '0');
+            const unitPrice = parseFloat(row.querySelector('.item-unit-price').value || '0');
+            const productId = parseInt(row.querySelector('.item-product').value || '0');
+            const product = productCategories.find(x => x.Id === productId);
+            if (product && !row.querySelector('.item-unit').value) {
+                row.querySelector('.item-unit').value = product.DefaultUnit;
+            }
+            const area = product?.UseAreaPricing ? (width * height * quantity) : 0;
+            row.querySelector('.item-area').value = fmt(area);
+            row.querySelector('.item-line-total').value = fmt(quantity * unitPrice);
+        }
+
+        function recalcTotals() {
+            let subtotal = 0;
+            tbody.querySelectorAll('.item-line-total').forEach(x => subtotal += parseFloat(x.value || '0'));
+            const discount = parseFloat(document.getElementById('discount').value || '0');
+            const tax = parseFloat(document.getElementById('tax').value || '0');
+            document.getElementById('subtotal').value = fmt(subtotal);
+            document.getElementById('total').value = fmt(Math.max(0, subtotal - discount + tax));
+        }
+
+        async function estimateRow(row) {
+            const payload = {
+                productCategoryId: parseInt(row.querySelector('.item-product').value || '0') || null,
+                width: parseFloat(row.querySelector('.item-width').value || '0') || null,
+                height: parseFloat(row.querySelector('.item-height').value || '0') || null,
+                quantity: parseFloat(row.querySelector('.item-quantity').value || '0'),
+                unit: row.querySelector('.item-unit').value,
+                materialDescription: row.querySelector('.item-material').value,
+                printType: row.querySelector('.item-printtype').value,
+                finishingDescription: row.querySelector('.item-finishing').value,
+                customerId: parseInt(document.getElementById('customerSelect').value || '0') || null
+            };
+            const res = await fetch('@Url.Action("EstimateItem", "Orders")', { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token }, body: JSON.stringify(payload)});
+            const data = await res.json();
+            if (!res.ok) { alert(data.message || 'Không tìm thấy cấu hình giá phù hợp. Vui lòng nhập đơn giá thủ công.'); return; }
+
+            row.querySelector('.item-area').value = fmt(data.area);
+            row.querySelector('.item-est-unit').value = fmt(data.estimatedUnitPrice);
+            row.querySelector('.item-est-total').value = fmt(data.estimatedLineTotal);
+            row.querySelector('.item-est-cost').value = fmt(data.estimatedCost);
+            row.querySelector('.item-est-profit').value = fmt(data.estimatedProfit);
+            row.querySelector('.item-pricing-note').value = data.pricingNote;
+            row.querySelector('.item-unit-price').value = data.estimatedUnitPrice;
+            recalcRow(row); recalcTotals();
+        }
+
+        function syncNames(){
+            tbody.querySelectorAll('tr').forEach((row, i) => {
+                row.querySelector('.item-product').name = `Order.Items[${i}].ProductCategoryId`;
+                row.querySelector('.item-name').name = `Order.Items[${i}].ItemName`;
+                row.querySelector('.item-description').name = `Order.Items[${i}].Description`;
+                row.querySelector('.item-width').name = `Order.Items[${i}].Width`;
+                row.querySelector('.item-height').name = `Order.Items[${i}].Height`;
+                row.querySelector('.item-unit').name = `Order.Items[${i}].Unit`;
+                row.querySelector('.item-quantity').name = `Order.Items[${i}].Quantity`;
+                row.querySelector('.item-area').name = `Order.Items[${i}].Area`;
+                row.querySelector('.item-material').name = `Order.Items[${i}].MaterialDescription`;
+                row.querySelector('.item-printtype').name = `Order.Items[${i}].PrintType`;
+                row.querySelector('.item-finishing').name = `Order.Items[${i}].FinishingDescription`;
+                row.querySelector('.item-est-unit').name = `Order.Items[${i}].EstimatedUnitPrice`;
+                row.querySelector('.item-est-total').name = `Order.Items[${i}].EstimatedLineTotal`;
+                row.querySelector('.item-est-cost').name = `Order.Items[${i}].EstimatedCost`;
+                row.querySelector('.item-est-profit').name = `Order.Items[${i}].EstimatedProfit`;
+                row.querySelector('.item-unit-price').name = `Order.Items[${i}].UnitPrice`;
+                row.querySelector('.item-line-total').name = `Order.Items[${i}].LineTotal`;
+                row.querySelector('.item-pricing-note').name = `Order.Items[${i}].PricingNote`;
+                row.querySelector('.item-note').name = `Order.Items[${i}].Note`;
+            });
+        }
+
+        document.getElementById('addItemBtn').addEventListener('click', () => addRow());
+        document.getElementById('discount').addEventListener('input', recalcTotals);
+        document.getElementById('tax').addEventListener('input', recalcTotals);
+        document.getElementById('customerSelect').addEventListener('change', (e) => {
+            const c = customers.find(x => x.Id == e.target.value);
+            const map = ['name','phone','email','address','tax','debt'];
+            if (!c) {
+                map.forEach(k => document.querySelector(`#customerInfoBlock [data-field="${k}"]`).textContent = '-');
+                return;
+            }
+            document.querySelector('#customerInfoBlock [data-field="name"]').textContent = c.Name || '-';
+            document.querySelector('#customerInfoBlock [data-field="phone"]').textContent = c.Phone || '-';
+            document.querySelector('#customerInfoBlock [data-field="email"]').textContent = c.Email || '-';
+            document.querySelector('#customerInfoBlock [data-field="address"]').textContent = c.Address || '-';
+            document.querySelector('#customerInfoBlock [data-field="tax"]').textContent = c.TaxCode || '-';
+            document.querySelector('#customerInfoBlock [data-field="debt"]').textContent = fmt(c.CurrentDebt || 0);
+        });
+
+        document.getElementById('quickCustomerSaveBtn').addEventListener('click', async () => {
+            const payload = {
+                name: document.getElementById('qcName').value,
+                phone: document.getElementById('qcPhone').value,
+                email: document.getElementById('qcEmail').value,
+                address: document.getElementById('qcAddress').value,
+                taxCode: document.getElementById('qcTaxCode').value
+            };
+            const res = await fetch('@Url.Action("QuickCreateCustomer", "Orders")', { method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': token }, body: JSON.stringify(payload)});
+            const data = await res.json();
+            if (!res.ok) { document.getElementById('quickCustomerError').textContent = data.message || 'Không thể tạo khách hàng'; return; }
+            const opt = document.createElement('option');
+            opt.value = data.id;
+            opt.textContent = `${data.name} (${data.code})`;
+            document.getElementById('customerSelect').appendChild(opt);
+            document.getElementById('customerSelect').value = data.id;
+            document.getElementById('customerSelect').dispatchEvent(new Event('change'));
+            bootstrap.Modal.getInstance(document.getElementById('quickCustomerModal')).hide();
+        });
+
+        document.getElementById('createOrderForm').addEventListener('submit', (e) => {
+            document.getElementById('saveBtn').disabled = true;
+            document.getElementById('saveNewBtn').disabled = true;
+            if (tbody.querySelectorAll('tr').length === 0) {
+                e.preventDefault();
+                alert('Đơn hàng phải có ít nhất 1 hạng mục');
+                document.getElementById('saveBtn').disabled = false;
+                document.getElementById('saveNewBtn').disabled = false;
+            }
+        });
+
+        if (initialItems?.length) initialItems.forEach(x => addRow(x)); else addRow();
+        recalcTotals();
+    </script>
+}
