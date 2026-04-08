@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.EntityFrameworkCore;
+using PrintERP.Web.Data;
 using PrintERP.Web.Models.ViewModels;
 using PrintERP.Web.Services.Auth;
 using PrintERP.Web.Services.Implementations;
@@ -8,6 +10,9 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllersWithViews();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
+builder.Services.AddScoped<DbSeedService>();
 builder.Services.AddScoped<IAuthService, InMemoryAuthService>();
 builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
@@ -54,6 +59,12 @@ app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
+
+using (var scope = app.Services.CreateScope())
+{
+    var seedService = scope.ServiceProvider.GetRequiredService<DbSeedService>();
+    await seedService.EnsureInitializedAsync();
+}
 
 app.MapControllerRoute(
     name: "default",
