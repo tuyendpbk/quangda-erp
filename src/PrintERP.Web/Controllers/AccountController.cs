@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PrintERP.Web.Models.ViewModels;
+using System.Collections.ObjectModel;
 using PrintERP.Web.Services.Auth;
 
 namespace PrintERP.Web.Controllers;
@@ -11,6 +12,18 @@ namespace PrintERP.Web.Controllers;
 [AllowAnonymous]
 public class AccountController(IAuthService authService, ILogger<AccountController> logger) : Controller
 {
+
+    private static readonly IReadOnlyDictionary<string, string[]> RolePermissions =
+        new ReadOnlyDictionary<string, string[]>(new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase)
+        {
+            [DashboardRoles.Admin] = [DashboardPermissions.View],
+            [DashboardRoles.Manager] = [DashboardPermissions.View],
+            [DashboardRoles.Sales] = [DashboardPermissions.View],
+            [DashboardRoles.Warehouse] = [DashboardPermissions.View],
+            [DashboardRoles.Accountant] = [DashboardPermissions.View],
+            [DashboardRoles.Production] = [DashboardPermissions.View]
+        });
+
     [HttpGet]
     public IActionResult Login(string? returnUrl = null)
     {
@@ -59,6 +72,11 @@ public class AccountController(IAuthService authService, ILogger<AccountControll
                 new("FullName", loginResult.User.FullName),
                 new(ClaimTypes.Role, loginResult.User.Role)
             };
+
+            if (RolePermissions.TryGetValue(loginResult.User.Role, out var permissions))
+            {
+                claims.AddRange(permissions.Select(permission => new Claim("Permission", permission)));
+            }
 
             var claimsIdentity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
             var authProperties = new AuthenticationProperties

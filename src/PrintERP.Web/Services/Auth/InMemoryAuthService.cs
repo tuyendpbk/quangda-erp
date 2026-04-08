@@ -41,31 +41,23 @@ public class InMemoryAuthService : IAuthService
 
     private static IReadOnlyList<EmployeeRecord> BuildEmployees()
     {
-        var admin = new EmployeeRecord
+        var employees = new List<EmployeeRecord>
         {
-            Id = 1,
-            Username = "admin",
-            FullName = "System Administrator",
-            Role = "Admin",
-            IsActive = true,
-            PasswordHash = string.Empty
+            new() { Id = 1, Username = "admin", FullName = "System Administrator", Role = "Admin", IsActive = true, PasswordHash = string.Empty },
+            new() { Id = 2, Username = "manager", FullName = "Factory Manager", Role = "Manager", IsActive = true, PasswordHash = string.Empty },
+            new() { Id = 3, Username = "sales", FullName = "Sales User", Role = "Sales", IsActive = true, PasswordHash = string.Empty },
+            new() { Id = 4, Username = "warehouse", FullName = "Warehouse User", Role = "Warehouse", IsActive = true, PasswordHash = string.Empty },
+            new() { Id = 5, Username = "accountant", FullName = "Accountant User", Role = "Accountant", IsActive = true, PasswordHash = string.Empty },
+            new() { Id = 6, Username = "production", FullName = "Production User", Role = "Production", IsActive = true, PasswordHash = string.Empty },
+            new() { Id = 7, Username = "inactive", FullName = "Inactive User", Role = "Warehouse", IsActive = false, PasswordHash = string.Empty }
         };
 
-        admin.PasswordHash = PasswordHasher.HashPassword(admin, "Admin@123");
-
-        var inactive = new EmployeeRecord
+        foreach (var employee in employees)
         {
-            Id = 2,
-            Username = "warehouse",
-            FullName = "Warehouse User",
-            Role = "Warehouse",
-            IsActive = false,
-            PasswordHash = string.Empty
-        };
+            employee.PasswordHash = PasswordHasher.HashPassword(employee, "Admin@123");
+        }
 
-        inactive.PasswordHash = PasswordHasher.HashPassword(inactive, "Warehouse@123");
-
-        return [admin, inactive];
+        return employees;
     }
 
     private sealed class EmployeeRecord
