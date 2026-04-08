@@ -1,0 +1,241 @@
+@model PrintERP.Web.Models.ViewModels.OrderDetailViewModel
+@{
+    ViewData["Title"] = "Order Detail";
+    string FmtMoney(decimal value) => string.Format("{0:N0}", value);
+    string FmtDate(DateTime value) => value.ToString("dd/MM/yyyy");
+    string StatusClass(string status) => status.ToUpperInvariant() switch
+    {
+        "NEW" => "text-bg-secondary",
+        "DESIGN" => "text-bg-primary",
+        "PRODUCING" => "text-bg-warning",
+        "DONE" => "text-bg-success",
+        "DELIVERED" => "bg-primary text-white",
+        "CANCELLED" => "text-bg-danger",
+        _ => "text-bg-secondary"
+    };
+    string PaymentStatusClass(string status) => status.ToUpperInvariant() switch
+    {
+        "UNPAID" => "text-bg-secondary",
+        "PARTIAL" => "text-bg-warning",
+        "PAID" => "text-bg-success",
+        _ => "text-bg-secondary"
+    };
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-start mb-3 gap-2 flex-wrap">
+        <div>
+            <h2 class="mb-1">Order Detail</h2>
+            <div class="text-muted">SCR-ORD-DTL-01</div>
+        </div>
+        <a class="btn btn-outline-secondary" asp-controller="Dashboard" asp-action="Index">Quay lại danh sách</a>
+    </div>
+
+    @if (ViewBag.SuccessMessage is string successMessage && !string.IsNullOrWhiteSpace(successMessage))
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+
+    <div class="card mb-3">
+        <div class="card-header">Header thông tin đơn hàng</div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3"><small class="text-muted d-block">Mã đơn hàng</small><strong>@Model.OrderCode</strong></div>
+                <div class="col-md-3"><small class="text-muted d-block">Ngày tạo đơn</small><span>@FmtDate(Model.OrderDate)</span></div>
+                <div class="col-md-3">
+                    <small class="text-muted d-block">Ngày giao</small>
+                    @if (Model.DeliveryDate.HasValue)
+                    {
+                        <span class="@(Model.IsOverdue ? "text-danger fw-semibold" : string.Empty)">@FmtDate(Model.DeliveryDate.Value)</span>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </div>
+                <div class="col-md-3"><small class="text-muted d-block">Trạng thái đơn hàng</small><span class="badge @StatusClass(Model.Status)">@Model.Status</span></div>
+                <div class="col-md-3"><small class="text-muted d-block">Trạng thái thanh toán</small><span class="badge @PaymentStatusClass(Model.PaymentStatus)">@Model.PaymentStatus</span></div>
+                <div class="col-md-3"><small class="text-muted d-block">Nhân viên sales</small><span>@Model.SalesEmployeeName</span></div>
+                <div class="col-md-3"><small class="text-muted d-block">Nhân viên phụ trách</small><span>@(Model.AssignedEmployeeName ?? "-")</span></div>
+                <div class="col-md-12">
+                    <small class="text-muted d-block">Khách hàng</small>
+                    <div><a asp-controller="Customers" asp-action="Details" asp-route-id="@Model.CustomerId">@Model.CustomerName</a></div>
+                    <div class="text-muted">@Model.CustomerPhone - @Model.CustomerEmail</div>
+                    <div class="text-muted">@Model.CustomerAddress</div>
+                </div>
+            </div>
+
+            <hr />
+            <div class="row g-3">
+                <div class="col-md-3"><small class="text-muted d-block">Subtotal</small><strong>@FmtMoney(Model.SubtotalAmount)</strong></div>
+                <div class="col-md-3"><small class="text-muted d-block">Discount</small><strong>@FmtMoney(Model.DiscountAmount)</strong></div>
+                <div class="col-md-3"><small class="text-muted d-block">Tax</small><strong>@FmtMoney(Model.TaxAmount)</strong></div>
+                <div class="col-md-3"><small class="text-muted d-block">Total Amount</small><strong class="text-primary">@FmtMoney(Model.TotalAmount)</strong></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        @if (Model.CanEdit)
+        {
+            <a class="btn btn-primary" asp-action="Edit" asp-route-id="@Model.Id">Sửa đơn</a>
+        }
+        @if (Model.CanUpdateStatus)
+        {
+            <button type="button" class="btn btn-outline-primary" disabled>Cập nhật trạng thái</button>
+        }
+        @if (Model.CanRecordPayment)
+        {
+            <button type="button" class="btn btn-outline-success" disabled>Ghi nhận thanh toán</button>
+        }
+        @if (Model.CanCreateStockOut)
+        {
+            <a class="btn btn-outline-warning" asp-controller="StockOut" asp-action="Create" asp-route-orderId="@Model.Id">Tạo phiếu xuất kho</a>
+        }
+        @if (Model.CanExportPdf)
+        {
+            <button type="button" class="btn btn-outline-secondary" disabled>Xuất báo giá PDF</button>
+            <button type="button" class="btn btn-outline-secondary" disabled>Xuất phiếu đơn PDF</button>
+        }
+    </div>
+
+    <ul class="nav nav-tabs" id="order-detail-tabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-items" type="button">Chi tiết hạng mục</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-general" type="button">Thông tin chung</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-materials" type="button">Vật tư / kho</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-payments" type="button">Thanh toán</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-status" type="button">Lịch sử trạng thái</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-notes" type="button">Ghi chú</button></li>
+    </ul>
+
+    <div class="tab-content border border-top-0 p-3 bg-white">
+        <div class="tab-pane fade show active" id="tab-items">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle">
+                    <thead class="table-light"><tr><th>STT</th><th>Loại sản phẩm</th><th>Tên hạng mục</th><th>Mô tả</th><th>Rộng</th><th>Cao</th><th>Đơn vị</th><th>Số lượng</th><th>Diện tích</th><th>Chất liệu</th><th>Loại in</th><th>Gia công</th><th>Đơn giá estimate</th><th>Thành tiền estimate</th><th>Giá vốn dự kiến</th><th>Lợi nhuận dự kiến</th><th>Đơn giá chốt</th><th>Thành tiền chốt</th><th>Ghi chú giá</th><th>Ghi chú item</th></tr></thead>
+                    <tbody>
+                    @if (Model.Items.Count == 0)
+                    {
+                        <tr><td colspan="20" class="text-center text-muted">Chưa phát sinh dữ liệu</td></tr>
+                    }
+                    else
+                    {
+                        @for (var i = 0; i < Model.Items.Count; i++)
+                        {
+                            var item = Model.Items[i];
+                            <tr>
+                                <td>@(i + 1)</td><td>@item.ProductCategoryName</td><td>@item.ItemName</td><td>@item.Description</td><td>@item.Width</td><td>@item.Height</td><td>@item.Unit</td><td>@item.Quantity</td><td>@item.Area</td><td>@item.MaterialDescription</td><td>@item.PrintType</td><td>@item.FinishingDescription</td><td>@FmtMoney(item.EstimatedUnitPrice)</td><td>@FmtMoney(item.EstimatedLineTotal)</td><td>@FmtMoney(item.EstimatedCost)</td><td>@FmtMoney(item.EstimatedProfit)</td><td>@FmtMoney(item.UnitPrice)</td><td>@FmtMoney(item.LineTotal)</td><td>@if (!string.IsNullOrWhiteSpace(item.PricingNote)){<span class="text-warning" title="Giá đã override">⚠</span>} @item.PricingNote</td><td>@item.Note</td>
+                            </tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-general">
+            <dl class="row mb-0">
+                <dt class="col-md-3">Mã đơn</dt><dd class="col-md-9">@Model.OrderCode</dd>
+                <dt class="col-md-3">Khách hàng</dt><dd class="col-md-9">@Model.CustomerName</dd>
+                <dt class="col-md-3">SĐT / Email</dt><dd class="col-md-9">@Model.CustomerPhone / @Model.CustomerEmail</dd>
+                <dt class="col-md-3">Địa chỉ</dt><dd class="col-md-9">@Model.CustomerAddress</dd>
+                <dt class="col-md-3">Ghi chú đơn hàng</dt><dd class="col-md-9">@(string.IsNullOrWhiteSpace(Model.Note) ? "-" : Model.Note)</dd>
+            </dl>
+        </div>
+
+        <div class="tab-pane fade" id="tab-materials">
+            <h6>Vật tư sử dụng theo item</h6>
+            <div class="table-responsive mb-3">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light"><tr><th>Hạng mục đơn hàng</th><th>Vật tư</th><th>Planned Quantity</th><th>Actual Quantity</th><th>Unit Cost</th><th>Total Cost</th><th>Note</th></tr></thead>
+                    <tbody>
+                    @if (Model.MaterialUsages.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center text-muted">Chưa phát sinh</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var usage in Model.MaterialUsages)
+                        {
+                            <tr><td>@usage.OrderItemName</td><td><a asp-controller="Materials" asp-action="Details" asp-route-id="@usage.MaterialId">@usage.MaterialName</a></td><td>@usage.PlannedQuantity</td><td>@usage.ActualQuantity</td><td>@FmtMoney(usage.UnitCost)</td><td>@FmtMoney(usage.TotalCost)</td><td>@usage.Note</td></tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+
+            <h6>Phiếu xuất kho liên quan</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light"><tr><th>Mã phiếu xuất</th><th>Ngày xuất</th><th>Mục đích</th><th>Người xuất</th><th>Tổng giá trị</th><th>Thao tác</th></tr></thead>
+                    <tbody>
+                    @if (Model.StockOuts.Count == 0)
+                    {
+                        <tr><td colspan="6" class="text-center text-muted">Chưa phát sinh</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var stockOut in Model.StockOuts)
+                        {
+                            <tr><td>@stockOut.Code</td><td>@FmtDate(stockOut.StockOutDate)</td><td>@stockOut.Purpose</td><td>@stockOut.CreatedBy</td><td>@FmtMoney(stockOut.TotalAmount)</td><td><a asp-controller="StockOut" asp-action="Details" asp-route-id="@stockOut.Id">Xem chi tiết</a></td></tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-payments">
+            <div class="row g-3 mb-3">
+                <div class="col-md-3"><div class="border rounded p-2"><small class="text-muted d-block">Total Amount</small><strong>@FmtMoney(Model.TotalAmount)</strong></div></div>
+                <div class="col-md-3"><div class="border rounded p-2"><small class="text-muted d-block">Paid Amount</small><strong>@FmtMoney(Model.PaidAmount)</strong></div></div>
+                <div class="col-md-3"><div class="border rounded p-2"><small class="text-muted d-block">Remaining Amount</small><strong>@FmtMoney(Model.RemainingAmount)</strong></div></div>
+                <div class="col-md-3"><div class="border rounded p-2"><small class="text-muted d-block">Payment Status</small><span class="badge @PaymentStatusClass(Model.PaymentStatus)">@Model.PaymentStatus</span></div></div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light"><tr><th>STT</th><th>Ngày thanh toán</th><th>Số tiền</th><th>Phương thức</th><th>Mã tham chiếu</th><th>Ghi chú</th><th>Người tạo</th></tr></thead>
+                    <tbody>
+                    @if (Model.Payments.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center text-muted">Chưa phát sinh dữ liệu</td></tr>
+                    }
+                    else
+                    {
+                        @for (var i = 0; i < Model.Payments.Count; i++)
+                        {
+                            var payment = Model.Payments[i];
+                            <tr><td>@(i + 1)</td><td>@payment.PaymentDate.ToString("dd/MM/yyyy HH:mm")</td><td>@FmtMoney(payment.Amount)</td><td>@payment.Method</td><td>@payment.ReferenceCode</td><td>@payment.Note</td><td>@payment.CreatedBy</td></tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-status">
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-light"><tr><th>Thời gian</th><th>Trạng thái cũ</th><th>Trạng thái mới</th><th>Người thay đổi</th><th>Ghi chú</th></tr></thead>
+                    <tbody>
+                    @if (Model.StatusHistories.Count == 0)
+                    {
+                        <tr><td colspan="5" class="text-center text-muted">Không có lịch sử trạng thái</td></tr>
+                    }
+                    else
+                    {
+                        @foreach (var history in Model.StatusHistories.OrderBy(x => x.ChangedAt))
+                        {
+                            <tr><td>@history.ChangedAt.ToString("dd/MM/yyyy HH:mm")</td><td>@(history.OldStatus ?? "-")</td><td>@history.NewStatus</td><td>@history.ChangedBy</td><td>@history.Note</td></tr>
+                        }
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-notes">
+            <p class="mb-0">@(string.IsNullOrWhiteSpace(Model.Note) ? "Chưa phát sinh dữ liệu" : Model.Note)</p>
+        </div>
+    </div>
+</div>
