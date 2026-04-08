@@ -1,0 +1,13 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<section class="simple-page">
+    <h1>Dashboard</h1>
+    <p>Xin chào @User.Identity?.Name!</p>
+
+    <form asp-controller="Account" asp-action="Logout" method="post">
+        @Html.AntiForgeryToken()
+        <button type="submit">Đăng xuất</button>
+    </form>
+</section>
