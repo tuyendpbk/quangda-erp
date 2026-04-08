@@ -1,10 +1,13 @@
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using PrintERP.Web.Data;
+using PrintERP.Web.Data.Entities;
 using PrintERP.Web.Models.ViewModels;
 using PrintERP.Web.Services.Interfaces;
 
 namespace PrintERP.Web.Services.Implementations;
 
-public class OrderService(ICustomerService customerService) : IOrderService
+public class OrderService(ICustomerService customerService, AppDbContext dbContext) : IOrderService
 {
     public async Task<OrderCreatePageViewModel> BuildCreatePageAsync(ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
@@ -12,7 +15,7 @@ public class OrderService(ICustomerService customerService) : IOrderService
         var orderDate = DateTime.Today;
         var order = new OrderCreateViewModel
         {
-            OrderCode = InMemoryOrderDataStore.NextOrderCode(),
+            OrderCode = await NextOrderCodeAsync(cancellationToken),
             OrderDate = orderDate,
             Items =
             [
@@ -36,47 +39,47 @@ public class OrderService(ICustomerService customerService) : IOrderService
         {
             Order = order,
             Customers = customers,
-            Employees = InMemoryOrderDataStore.Employees,
-            ProductCategories = InMemoryOrderDataStore.ProductCategories
+            Employees = await GetEmployeeOptionsAsync(cancellationToken),
+            ProductCategories = await GetProductCategoriesAsync(cancellationToken)
         };
     }
 
-    public Task<(bool Success, string? Error, long? OrderId)> CreateAsync(OrderCreateViewModel model, CancellationToken cancellationToken = default)
+    public async Task<(bool Success, string? Error, long? OrderId)> CreateAsync(OrderCreateViewModel model, CancellationToken cancellationToken = default)
     {
         if (model.Items.Count == 0)
         {
-            return Task.FromResult((Success: false, Error: (string?)"Đơn hàng phải có ít nhất 1 hạng mục", OrderId: (long?)null));
+            return (Success: false, Error: (string?)"Đơn hàng phải có ít nhất 1 hạng mục", OrderId: (long?)null);
         }
 
-        var customer = InMemoryOrderDataStore.Customers.FirstOrDefault(x => x.Id == model.CustomerId);
+        var customer = await customerService.GetCustomerByIdAsync(model.CustomerId, cancellationToken);
         if (customer is null)
         {
-            return Task.FromResult((Success: false, Error: (string?)"Vui lòng chọn khách hàng", OrderId: (long?)null));
+            return (Success: false, Error: (string?)"Vui lòng chọn khách hàng", OrderId: (long?)null);
         }
 
         var subtotal = model.Items.Sum(x => x.LineTotal);
         if (subtotal < 0)
         {
-            return Task.FromResult((Success: false, Error: (string?)"Dữ liệu thành tiền không hợp lệ", OrderId: (long?)null));
+            return (Success: false, Error: (string?)"Dữ liệu thành tiền không hợp lệ", OrderId: (long?)null);
         }
 
         if (model.DiscountAmount > subtotal)
         {
-            return Task.FromResult((Success: false, Error: (string?)"Giảm giá không hợp lệ", OrderId: (long?)null));
+            return (Success: false, Error: (string?)"Giảm giá không hợp lệ", OrderId: (long?)null);
         }
 
         model.SubtotalAmount = subtotal;
         model.TotalAmount = subtotal - model.DiscountAmount + model.TaxAmount;
 
-        var orderId = InMemoryOrderDataStore.NextOrderId();
-        var salesEmployee = InMemoryOrderDataStore.Employees.FirstOrDefault(x => x.Id == model.SalesEmployeeId)?.Name ?? "-";
+        var employees = await GetEmployeeOptionsAsync(cancellationToken);
+        var categories = await GetProductCategoriesAsync(cancellationToken);
+        var salesEmployee = employees.FirstOrDefault(x => x.Id == model.SalesEmployeeId)?.Name ?? "-";
         var assignedEmployee = model.AssignedEmployeeId.HasValue
-            ? InMemoryOrderDataStore.Employees.FirstOrDefault(x => x.Id == model.AssignedEmployeeId.Value)?.Name
+            ? employees.FirstOrDefault(x => x.Id == model.AssignedEmployeeId.Value)?.Name
             : null;
 
         var detail = new OrderDetailViewModel
         {
-            Id = orderId,
             OrderCode = model.OrderCode,
             OrderDate = model.OrderDate,
             DeliveryDate = model.DeliveryDate,
@@ -99,7 +102,7 @@ public class OrderService(ICustomerService customerService) : IOrderService
             Items = model.Items.Select((item, index) => new OrderDetailItemViewModel
             {
                 Id = index + 1,
-                ProductCategoryName = InMemoryOrderDataStore.ProductCategories.FirstOrDefault(x => x.Id == item.ProductCategoryId)?.Name,
+                ProductCategoryName = categories.FirstOrDefault(x => x.Id == item.ProductCategoryId)?.Name,
                 ItemName = item.ItemName,
                 Description = item.Description,
                 Width = item.Width,
@@ -131,13 +134,13 @@ public class OrderService(ICustomerService customerService) : IOrderService
             ]
         };
 
-        InMemoryOrderDataStore.AddOrder(detail);
+        var orderId = await AddOrderAsync(detail, cancellationToken);
 
-        return Task.FromResult((Success: true, Error: (string?)null, OrderId: (long?)orderId));
+        return (Success: true, Error: (string?)null, OrderId: (long?)orderId);
     }
 
 
-    public Task<OrderListViewModel> GetListAsync(OrderFilterViewModel filter, ClaimsPrincipal user, CancellationToken cancellationToken = default)
+    public async Task<OrderListViewModel> GetListAsync(OrderFilterViewModel filter, ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
         var normalizedFilter = NormalizeFilter(filter);
         var today = DateTime.Today;
@@ -145,7 +148,8 @@ public class OrderService(ICustomerService customerService) : IOrderService
 
         var hasPermission = (string permission) => user.Claims.Any(c => c.Type == "Permission" && c.Value == permission);
 
-        IEnumerable<OrderDetailViewModel> query = InMemoryOrderDataStore.Orders;
+        var allOrders = await GetOrdersAsync(cancellationToken);
+        IEnumerable<OrderDetailViewModel> query = allOrders;
 
         if (!string.IsNullOrWhiteSpace(normalizedFilter.Keyword))
         {
@@ -174,7 +178,8 @@ public class OrderService(ICustomerService customerService) : IOrderService
 
         if (normalizedFilter.SalesEmployeeId.HasValue)
         {
-            var salesEmployeeName = InMemoryOrderDataStore.Employees.FirstOrDefault(x => x.Id == normalizedFilter.SalesEmployeeId.Value)?.Name;
+            var employees = await GetEmployeeOptionsAsync(cancellationToken);
+            var salesEmployeeName = employees.FirstOrDefault(x => x.Id == normalizedFilter.SalesEmployeeId.Value)?.Name;
             if (!string.IsNullOrWhiteSpace(salesEmployeeName))
             {
                 query = query.Where(x => string.Equals(x.SalesEmployeeName, salesEmployeeName, StringComparison.OrdinalIgnoreCase));
@@ -183,7 +188,8 @@ public class OrderService(ICustomerService customerService) : IOrderService
 
         if (normalizedFilter.AssignedEmployeeId.HasValue)
         {
-            var assignedEmployeeName = InMemoryOrderDataStore.Employees.FirstOrDefault(x => x.Id == normalizedFilter.AssignedEmployeeId.Value)?.Name;
+            var employees = await GetEmployeeOptionsAsync(cancellationToken);
+            var assignedEmployeeName = employees.FirstOrDefault(x => x.Id == normalizedFilter.AssignedEmployeeId.Value)?.Name;
             if (!string.IsNullOrWhiteSpace(assignedEmployeeName))
             {
                 query = query.Where(x => string.Equals(x.AssignedEmployeeName, assignedEmployeeName, StringComparison.OrdinalIgnoreCase));
@@ -302,21 +308,21 @@ public class OrderService(ICustomerService customerService) : IOrderService
             TotalOrderAmount = totalOrderAmount,
             TotalPaidAmount = totalPaidAmount,
             TotalRemainingAmount = totalRemainingAmount,
-            Customers = InMemoryOrderDataStore.Customers,
-            Employees = InMemoryOrderDataStore.Employees,
+            Customers = await customerService.GetCustomersAsync(cancellationToken),
+            Employees = await GetEmployeeOptionsAsync(cancellationToken),
             CanCreateOrder = hasPermission(OrderPermissions.Create),
             CanExport = hasPermission(OrderPermissions.View)
         };
 
-        return Task.FromResult(model);
+        return model;
     }
 
-    public Task<OrderStatusUpdateViewModel?> BuildStatusUpdateAsync(long id, ClaimsPrincipal user, CancellationToken cancellationToken = default)
+    public async Task<OrderStatusUpdateViewModel?> BuildStatusUpdateAsync(long id, ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
-        var order = InMemoryOrderDataStore.Orders.FirstOrDefault(x => x.Id == id);
+        var order = (await GetOrdersAsync(cancellationToken)).FirstOrDefault(x => x.Id == id);
         if (order is null)
         {
-            return Task.FromResult<OrderStatusUpdateViewModel?>(null);
+            return null;
         }
 
         var canOverrideFlow = CanOverrideStatusFlow(user);
@@ -336,51 +342,51 @@ public class OrderService(ICustomerService customerService) : IOrderService
             AvailableStatuses = availableStatuses
         };
 
-        return Task.FromResult<OrderStatusUpdateViewModel?>(model);
+        return model;
     }
 
-    public Task<(bool Success, string? Error)> UpdateStatusAsync(OrderStatusUpdateViewModel model, ClaimsPrincipal user, CancellationToken cancellationToken = default)
+    public async Task<(bool Success, string? Error)> UpdateStatusAsync(OrderStatusUpdateViewModel model, ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
-        var order = InMemoryOrderDataStore.Orders.FirstOrDefault(x => x.Id == model.OrderId);
+        var order = (await GetOrdersAsync(cancellationToken)).FirstOrDefault(x => x.Id == model.OrderId);
         if (order is null)
         {
-            return Task.FromResult((Success: false, Error: (string?)"Không tìm thấy đơn hàng."));
+            return (Success: false, Error: (string?)"Không tìm thấy đơn hàng.");
         }
 
         var oldStatus = order.Status.Trim().ToUpperInvariant();
         var newStatus = model.NewStatus.Trim().ToUpperInvariant();
         if (string.IsNullOrWhiteSpace(newStatus))
         {
-            return Task.FromResult((Success: false, Error: (string?)"Vui lòng chọn trạng thái mới"));
+            return (Success: false, Error: (string?)"Vui lòng chọn trạng thái mới");
         }
 
         if (string.Equals(oldStatus, newStatus, StringComparison.OrdinalIgnoreCase))
         {
-            return Task.FromResult((Success: false, Error: (string?)"Trạng thái mới phải khác trạng thái hiện tại"));
+            return (Success: false, Error: (string?)"Trạng thái mới phải khác trạng thái hiện tại");
         }
 
         var canOverrideFlow = CanOverrideStatusFlow(user);
         if (IsLockedStatus(oldStatus) && !canOverrideFlow)
         {
-            return Task.FromResult((Success: false, Error: (string?)"Không thể chuyển từ trạng thái hiện tại sang trạng thái đã chọn."));
+            return (Success: false, Error: (string?)"Không thể chuyển từ trạng thái hiện tại sang trạng thái đã chọn.");
         }
 
         var availableStatuses = GetAvailableStatuses(oldStatus, canOverrideFlow);
         if (!availableStatuses.Contains(newStatus, StringComparer.OrdinalIgnoreCase))
         {
-            return Task.FromResult((Success: false, Error: (string?)"Không thể chuyển từ trạng thái hiện tại sang trạng thái đã chọn."));
+            return (Success: false, Error: (string?)"Không thể chuyển từ trạng thái hiện tại sang trạng thái đã chọn.");
         }
 
         if (string.Equals(newStatus, "CANCELLED", StringComparison.OrdinalIgnoreCase))
         {
             if (string.IsNullOrWhiteSpace(model.Note))
             {
-                return Task.FromResult((Success: false, Error: (string?)"Vui lòng nhập lý do hủy đơn"));
+                return (Success: false, Error: (string?)"Vui lòng nhập lý do hủy đơn");
             }
 
             if ((order.Payments.Count > 0 || order.StockOuts.Count > 0) && !canOverrideFlow)
             {
-                return Task.FromResult((Success: false, Error: (string?)"Không thể hủy đơn vì đơn đã phát sinh thanh toán hoặc xuất kho."));
+                return (Success: false, Error: (string?)"Không thể hủy đơn vì đơn đã phát sinh thanh toán hoặc xuất kho.");
             }
         }
 
@@ -388,7 +394,7 @@ public class OrderService(ICustomerService customerService) : IOrderService
             && !string.Equals(oldStatus, "DONE", StringComparison.OrdinalIgnoreCase)
             && !canOverrideFlow)
         {
-            return Task.FromResult((Success: false, Error: (string?)"Không thể chuyển từ trạng thái hiện tại sang trạng thái đã chọn."));
+            return (Success: false, Error: (string?)"Không thể chuyển từ trạng thái hiện tại sang trạng thái đã chọn.");
         }
 
         order.Status = newStatus;
@@ -401,7 +407,54 @@ public class OrderService(ICustomerService customerService) : IOrderService
             Note = string.IsNullOrWhiteSpace(model.Note) ? null : model.Note.Trim()
         });
 
-        return Task.FromResult((Success: true, Error: (string?)null));
+        await UpdateOrderAsync(order, cancellationToken);
+        return (Success: true, Error: (string?)null);
+    }
+
+    private async Task<string> NextOrderCodeAsync(CancellationToken cancellationToken)
+    {
+        var nextId = (await dbContext.Orders.MaxAsync(x => (long?)x.Id, cancellationToken) ?? 0) + 1;
+        return $"ORD{DateTime.UtcNow:yyyy}{nextId:000}";
+    }
+
+    private Task<List<EmployeeOptionViewModel>> GetEmployeeOptionsAsync(CancellationToken cancellationToken)
+        => dbContext.Employees.AsNoTracking().Where(x => x.IsActive).OrderBy(x => x.Id)
+            .Select(x => new EmployeeOptionViewModel { Id = x.Id, Name = x.FullName })
+            .ToListAsync(cancellationToken);
+
+    private Task<List<ProductCategoryOptionViewModel>> GetProductCategoriesAsync(CancellationToken cancellationToken)
+        => dbContext.ProductCategories.AsNoTracking().OrderBy(x => x.Id)
+            .Select(x => new ProductCategoryOptionViewModel
+            {
+                Id = x.Id,
+                Name = x.Name,
+                DefaultUnit = x.DefaultUnit,
+                UseAreaPricing = x.UseAreaPricing
+            }).ToListAsync(cancellationToken);
+
+    private async Task<List<OrderDetailViewModel>> GetOrdersAsync(CancellationToken cancellationToken)
+    {
+        var payloads = await dbContext.Orders.AsNoTracking().OrderByDescending(x => x.Id).Select(x => x.Payload).ToListAsync(cancellationToken);
+        return payloads.Select(OrderPayloadMapper.Deserialize).Where(x => x is not null).Cast<OrderDetailViewModel>().ToList();
+    }
+
+    private async Task<long> AddOrderAsync(OrderDetailViewModel order, CancellationToken cancellationToken)
+    {
+        var entity = new ErpOrder { OrderCode = order.OrderCode, Payload = OrderPayloadMapper.Serialize(order) };
+        dbContext.Orders.Add(entity);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        order.Id = entity.Id;
+        entity.Payload = OrderPayloadMapper.Serialize(order);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return entity.Id;
+    }
+
+    private async Task UpdateOrderAsync(OrderDetailViewModel order, CancellationToken cancellationToken)
+    {
+        var entity = await dbContext.Orders.FirstOrDefaultAsync(x => x.Id == order.Id, cancellationToken);
+        if (entity is null) return;
+        entity.Payload = OrderPayloadMapper.Serialize(order);
+        await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     private static OrderFilterViewModel NormalizeFilter(OrderFilterViewModel filter)
@@ -495,12 +548,12 @@ public class OrderService(ICustomerService customerService) : IOrderService
         };
     }
 
-    public Task<OrderDetailViewModel?> GetDetailAsync(long id, ClaimsPrincipal user, CancellationToken cancellationToken = default)
+    public async Task<OrderDetailViewModel?> GetDetailAsync(long id, ClaimsPrincipal user, CancellationToken cancellationToken = default)
     {
-        var order = InMemoryOrderDataStore.Orders.FirstOrDefault(x => x.Id == id);
+        var order = (await GetOrdersAsync(cancellationToken)).FirstOrDefault(x => x.Id == id);
         if (order is null)
         {
-            return Task.FromResult<OrderDetailViewModel?>(null);
+            return null;
         }
 
         order.PaidAmount = order.Payments.Sum(x => x.Amount);
@@ -519,6 +572,6 @@ public class OrderService(ICustomerService customerService) : IOrderService
 
         order.Payments = order.Payments.OrderByDescending(x => x.PaymentDate).ToList();
 
-        return Task.FromResult<OrderDetailViewModel?>(order);
+        return order;
     }
 }
