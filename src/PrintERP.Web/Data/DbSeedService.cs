@@ -17,13 +17,13 @@ public class DbSeedService(AppDbContext dbContext)
         {
             var employees = new[]
             {
-                new ErpEmployee { Id = 1, Username = "admin", FullName = "System Administrator", Role = "Admin", IsActive = true },
-                new ErpEmployee { Id = 2, Username = "manager", FullName = "Factory Manager", Role = "Manager", IsActive = true },
-                new ErpEmployee { Id = 3, Username = "sales", FullName = "Sales User", Role = "Sales", IsActive = true },
-                new ErpEmployee { Id = 4, Username = "warehouse", FullName = "Warehouse User", Role = "Warehouse", IsActive = true },
-                new ErpEmployee { Id = 5, Username = "accountant", FullName = "Accountant User", Role = "Accountant", IsActive = true },
-                new ErpEmployee { Id = 6, Username = "production", FullName = "Production User", Role = "Production", IsActive = true },
-                new ErpEmployee { Id = 7, Username = "inactive", FullName = "Inactive User", Role = "Warehouse", IsActive = false }
+                new ErpEmployee { Id = 1, EmployeeCode = "EMP0001", Username = "admin", FullName = "System Administrator", Role = "Admin", RoleId = 1, Status = "ACTIVE", IsActive = true },
+                new ErpEmployee { Id = 2, EmployeeCode = "EMP0002", Username = "manager", FullName = "Factory Manager", Role = "Manager", RoleId = 2, Status = "ACTIVE", IsActive = true },
+                new ErpEmployee { Id = 3, EmployeeCode = "EMP0003", Username = "sales", FullName = "Sales User", Role = "Sales", RoleId = 3, Status = "ACTIVE", IsActive = true },
+                new ErpEmployee { Id = 4, EmployeeCode = "EMP0004", Username = "warehouse", FullName = "Warehouse User", Role = "Warehouse", RoleId = 4, Status = "ACTIVE", IsActive = true },
+                new ErpEmployee { Id = 5, EmployeeCode = "EMP0005", Username = "accountant", FullName = "Accountant User", Role = "Accountant", RoleId = 5, Status = "ACTIVE", IsActive = true },
+                new ErpEmployee { Id = 6, EmployeeCode = "EMP0006", Username = "production", FullName = "Production User", Role = "Production", RoleId = 6, Status = "ACTIVE", IsActive = true },
+                new ErpEmployee { Id = 7, EmployeeCode = "EMP0007", Username = "inactive", FullName = "Inactive User", Role = "Warehouse", RoleId = 4, Status = "INACTIVE", IsActive = false }
             };
 
             foreach (var employee in employees)

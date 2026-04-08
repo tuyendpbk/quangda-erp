@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using PrintERP.Web.Data;
+using PrintERP.Web.Data.Entities;
 using PrintERP.Web.Models.ViewModels;
 using PrintERP.Web.Services.Interfaces;
 
@@ -8,6 +10,7 @@ namespace PrintERP.Web.Services.Implementations;
 
 public class EmployeeService(AppDbContext dbContext) : IEmployeeService
 {
+    private static readonly PasswordHasher<ErpEmployee> PasswordHasher = new();
     private static readonly (long Id, string Code, string Name, string DisplayName)[] Roles =
     [
         (1, "ADMIN", DashboardRoles.Admin, "Administrator"),
@@ -29,14 +32,14 @@ public class EmployeeService(AppDbContext dbContext) : IEmployeeService
         var projected = employees.Select(e =>
         {
             var roleMeta = Roles.FirstOrDefault(x => string.Equals(x.Name, e.Role, StringComparison.OrdinalIgnoreCase));
-            var roleId = roleMeta.Id == 0 ? 999 : roleMeta.Id;
+            var roleId = e.RoleId ?? (roleMeta.Id == 0 ? 999 : roleMeta.Id);
             var roleDisplay = roleMeta.DisplayName ?? e.Role;
-            var employeeCode = $"EMP{e.Id:0000}";
-            var department = ResolveDepartment(e.Role);
-            var phone = $"09{e.Id:00}{e.Id:00}{e.Id:00}{e.Id:00}"[..10];
-            var email = $"{e.Username.ToLowerInvariant()}@printerp.local";
-            var position = ResolvePosition(e.Role);
-            var hireDate = DateTime.Today.AddDays(-30 * e.Id);
+            var employeeCode = string.IsNullOrWhiteSpace(e.EmployeeCode) ? $"EMP{e.Id:0000}" : e.EmployeeCode;
+            var department = string.IsNullOrWhiteSpace(e.Department) ? ResolveDepartment(e.Role) : e.Department;
+            var phone = e.Phone;
+            var email = e.Email;
+            var position = string.IsNullOrWhiteSpace(e.Position) ? ResolvePosition(e.Role) : e.Position;
+            var hireDate = e.HireDate ?? DateTime.Today.AddDays(-30 * e.Id);
 
             return new EmployeeListItemViewModel
             {
@@ -51,7 +54,7 @@ public class EmployeeService(AppDbContext dbContext) : IEmployeeService
                 RoleName = roleDisplay,
                 Username = e.Username,
                 HireDate = hireDate,
-                Status = e.IsActive ? "ACTIVE" : "INACTIVE",
+                Status = string.IsNullOrWhiteSpace(e.Status) ? (e.IsActive ? "ACTIVE" : "INACTIVE") : e.Status,
                 AssignedOrderCount = assignedOrderCountMap.GetValueOrDefault(e.FullName, 0),
                 CanView = hasPermission(EmployeePermissions.View),
                 CanEdit = hasPermission(EmployeePermissions.Edit),
@@ -160,6 +163,86 @@ public class EmployeeService(AppDbContext dbContext) : IEmployeeService
         employee.IsActive = !employee.IsActive;
         await dbContext.SaveChangesAsync(cancellationToken);
         return (true, null);
+    }
+
+    public Task<EmployeeCreatePageViewModel> BuildCreatePageAsync(EmployeeCreateViewModel? input = null, CancellationToken cancellationToken = default)
+    {
+        var vm = new EmployeeCreatePageViewModel
+        {
+            Employee = input ?? new EmployeeCreateViewModel(),
+            Roles = Roles.Select(x => (x.Id, x.Code)).ToList()
+        };
+
+        return Task.FromResult(vm);
+    }
+
+    public async Task<EmployeeCreateResult> CreateAsync(EmployeeCreateViewModel model, ClaimsPrincipal user, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmployeeCode = model.EmployeeCode.Trim();
+        var normalizedUsername = model.Username.Trim();
+        var normalizedPhone = string.IsNullOrWhiteSpace(model.Phone) ? null : model.Phone.Trim();
+        var normalizedEmail = string.IsNullOrWhiteSpace(model.Email) ? null : model.Email.Trim();
+        var normalizedStatus = model.Status.Trim().ToUpperInvariant();
+
+        var result = new EmployeeCreateResult();
+        var roleMeta = Roles.FirstOrDefault(x => x.Id == model.RoleId);
+        if (roleMeta.Id == 0)
+        {
+            result.Errors[nameof(EmployeeCreateViewModel.RoleId)] = "Vui lòng chọn vai trò.";
+            return result;
+        }
+
+        if (await dbContext.Employees.AnyAsync(x => x.EmployeeCode == normalizedEmployeeCode, cancellationToken))
+        {
+            result.Errors[nameof(EmployeeCreateViewModel.EmployeeCode)] = "Mã nhân viên đã tồn tại.";
+        }
+
+        if (await dbContext.Employees.AnyAsync(x => x.Username == normalizedUsername, cancellationToken))
+        {
+            result.Errors[nameof(EmployeeCreateViewModel.Username)] = "Tên đăng nhập đã tồn tại.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedPhone)
+            && await dbContext.Employees.AnyAsync(x => x.Phone == normalizedPhone, cancellationToken))
+        {
+            result.Errors[nameof(EmployeeCreateViewModel.Phone)] = "Số điện thoại đã tồn tại.";
+        }
+
+        if (!string.IsNullOrWhiteSpace(normalizedEmail)
+            && await dbContext.Employees.AnyAsync(x => x.Email == normalizedEmail, cancellationToken))
+        {
+            result.Errors[nameof(EmployeeCreateViewModel.Email)] = "Email đã tồn tại.";
+        }
+
+        if (result.Errors.Count > 0)
+        {
+            return result;
+        }
+
+        var employee = new ErpEmployee
+        {
+            EmployeeCode = normalizedEmployeeCode,
+            FullName = model.FullName.Trim(),
+            Phone = normalizedPhone,
+            Email = normalizedEmail,
+            Address = string.IsNullOrWhiteSpace(model.Address) ? null : model.Address.Trim(),
+            Department = string.IsNullOrWhiteSpace(model.Department) ? null : model.Department.Trim(),
+            Position = string.IsNullOrWhiteSpace(model.Position) ? null : model.Position.Trim(),
+            HireDate = model.HireDate?.Date,
+            RoleId = roleMeta.Id,
+            Role = roleMeta.Name,
+            Status = normalizedStatus,
+            Username = normalizedUsername,
+            IsActive = normalizedStatus == "ACTIVE"
+        };
+        employee.PasswordHash = PasswordHasher.HashPassword(employee, model.Password);
+
+        dbContext.Employees.Add(employee);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        result.Success = true;
+        result.EmployeeId = employee.Id;
+        return result;
     }
 
     private static EmployeeFilterViewModel NormalizeFilter(EmployeeFilterViewModel filter)

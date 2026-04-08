@@ -1,0 +1,148 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model PrintERP.Web.Models.ViewModels.EmployeeCreatePageViewModel
+@{
+    ViewData["Title"] = "Employee Create";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-start mb-3 gap-2 flex-wrap">
+        <div>
+            <h2 class="mb-1">Employee Create</h2>
+            <div class="text-muted">SCR-EMP-CRT-01</div>
+        </div>
+        <a class="btn btn-outline-secondary" asp-action="Index">Quay lại danh sách</a>
+    </div>
+
+    <form method="post" asp-action="Create" id="createEmployeeForm">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger"></div>
+
+        <div class="card mb-3">
+            <div class="card-header">1. Thông tin nhân viên</div>
+            <div class="card-body row g-3">
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Employee.EmployeeCode">Mã nhân viên</label>
+                    <input class="form-control" asp-for="Employee.EmployeeCode" autofocus />
+                    <span class="text-danger" asp-validation-for="Employee.EmployeeCode"></span>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label" asp-for="Employee.FullName">Họ và tên</label>
+                    <input class="form-control" asp-for="Employee.FullName" />
+                    <span class="text-danger" asp-validation-for="Employee.FullName"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Employee.Phone">Số điện thoại</label>
+                    <input class="form-control" asp-for="Employee.Phone" />
+                    <span class="text-danger" asp-validation-for="Employee.Phone"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Employee.Email">Email</label>
+                    <input class="form-control" asp-for="Employee.Email" />
+                    <span class="text-danger" asp-validation-for="Employee.Email"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Employee.Address">Địa chỉ</label>
+                    <input class="form-control" asp-for="Employee.Address" />
+                    <span class="text-danger" asp-validation-for="Employee.Address"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">2. Thông tin công việc</div>
+            <div class="card-body row g-3">
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Employee.Department">Bộ phận</label>
+                    <select class="form-select" asp-for="Employee.Department" asp-items="@(new SelectList(Model.Departments))">
+                        <option value="">-- Chọn bộ phận --</option>
+                    </select>
+                    <span class="text-danger" asp-validation-for="Employee.Department"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Employee.Position">Chức vụ</label>
+                    <input class="form-control" asp-for="Employee.Position" />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Employee.HireDate">Ngày vào làm</label>
+                    <input class="form-control" asp-for="Employee.HireDate" type="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <span class="text-danger" asp-validation-for="Employee.HireDate"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">3. Thông tin tài khoản đăng nhập</div>
+            <div class="card-body row g-3">
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Employee.Username">Tên đăng nhập</label>
+                    <input class="form-control" asp-for="Employee.Username" autocomplete="off" />
+                    <span class="text-danger" asp-validation-for="Employee.Username"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Employee.Password">Mật khẩu</label>
+                    <input class="form-control" asp-for="Employee.Password" type="password" autocomplete="new-password" />
+                    <span class="text-danger" asp-validation-for="Employee.Password"></span>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" asp-for="Employee.ConfirmPassword">Xác nhận mật khẩu</label>
+                    <input class="form-control" asp-for="Employee.ConfirmPassword" type="password" autocomplete="new-password" />
+                    <span class="text-danger" asp-validation-for="Employee.ConfirmPassword"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">4. Trạng thái và phân quyền</div>
+            <div class="card-body row g-3">
+                <div class="col-md-6">
+                    <label class="form-label" asp-for="Employee.RoleId">Vai trò</label>
+                    <select class="form-select" asp-for="Employee.RoleId" asp-items="@(new SelectList(Model.Roles, "Id", "Code"))">
+                        <option value="">-- Chọn vai trò --</option>
+                    </select>
+                    <span class="text-danger" asp-validation-for="Employee.RoleId"></span>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label" asp-for="Employee.Status">Trạng thái</label>
+                    <select class="form-select" asp-for="Employee.Status" asp-items="@(new SelectList(Model.Statuses))"></select>
+                    <span class="text-danger" asp-validation-for="Employee.Status"></span>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end">
+            <button type="submit" class="btn btn-primary" name="submitAction" value="save" id="saveBtn">Lưu</button>
+            <button type="submit" class="btn btn-outline-primary" name="submitAction" value="save-new" id="saveNewBtn">Lưu và tạo mới</button>
+            <a class="btn btn-outline-secondary" asp-action="Index">Quay lại</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        const form = document.getElementById('createEmployeeForm');
+        const saveBtn = document.getElementById('saveBtn');
+        const saveNewBtn = document.getElementById('saveNewBtn');
+        let isDirty = false;
+
+        form.querySelectorAll('input,select,textarea').forEach(el => {
+            el.addEventListener('change', () => isDirty = true);
+            el.addEventListener('input', () => isDirty = true);
+        });
+
+        form.addEventListener('submit', () => {
+            saveBtn.disabled = true;
+            saveNewBtn.disabled = true;
+            isDirty = false;
+        });
+
+        window.addEventListener('beforeunload', (event) => {
+            if (!isDirty) {
+                return;
+            }
+
+            event.preventDefault();
+            event.returnValue = '';
+        });
+    </script>
+}
