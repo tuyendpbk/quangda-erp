@@ -8,10 +8,25 @@ public class ErpEmployee
 {
     [Key]
     public int Id { get; set; }
+    [Required, MaxLength(50)]
+    public string EmployeeCode { get; set; } = string.Empty;
     [Required, MaxLength(128)]
     public string Username { get; set; } = string.Empty;
     [Required, MaxLength(256)]
     public string FullName { get; set; } = string.Empty;
+    [MaxLength(20)]
+    public string? Phone { get; set; }
+    [MaxLength(150)]
+    public string? Email { get; set; }
+    public string? Address { get; set; }
+    [MaxLength(100)]
+    public string? Department { get; set; }
+    [MaxLength(100)]
+    public string? Position { get; set; }
+    public DateTime? HireDate { get; set; }
+    public long? RoleId { get; set; }
+    [Required, MaxLength(20)]
+    public string Status { get; set; } = "ACTIVE";
     [Required, MaxLength(64)]
     public string Role { get; set; } = string.Empty;
     [Required]

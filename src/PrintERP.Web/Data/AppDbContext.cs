@@ -17,7 +17,10 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         modelBuilder.Entity<ErpOrder>().Property(x => x.CreatedAt).HasDefaultValueSql("now()");
         modelBuilder.Entity<ErpOrder>().HasIndex(x => x.OrderCode).IsUnique();
         modelBuilder.Entity<ErpCustomer>().HasIndex(x => x.Code).IsUnique();
+        modelBuilder.Entity<ErpEmployee>().HasIndex(x => x.EmployeeCode).IsUnique();
         modelBuilder.Entity<ErpEmployee>().HasIndex(x => x.Username).IsUnique();
+        modelBuilder.Entity<ErpEmployee>().HasIndex(x => x.Phone).IsUnique();
+        modelBuilder.Entity<ErpEmployee>().HasIndex(x => x.Email).IsUnique();
         modelBuilder.Entity<ErpOrder>().Property(x => x.Payload).HasColumnType("jsonb");
     }
 }

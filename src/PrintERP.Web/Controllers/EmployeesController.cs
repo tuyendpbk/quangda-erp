@@ -41,10 +41,42 @@ public class EmployeesController(IEmployeeService employeeService) : Controller
 
     [HttpGet]
     [Authorize(Policy = "EmployeeCreate")]
-    public IActionResult Create()
+    public async Task<IActionResult> Create(CancellationToken cancellationToken)
     {
-        TempData["SuccessMessage"] = "Điều hướng tới thêm mới nhân viên (placeholder).";
-        return RedirectToAction(nameof(Index));
+        var model = await employeeService.BuildCreatePageAsync(cancellationToken: cancellationToken);
+        return View(model);
+    }
+
+    [HttpPost]
+    [Authorize(Policy = "EmployeeCreate")]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Create([FromForm] EmployeeCreatePageViewModel pageModel, [FromForm] string submitAction, CancellationToken cancellationToken)
+    {
+        if (!TryValidateModel(pageModel.Employee, nameof(pageModel.Employee)))
+        {
+            var invalidModel = await employeeService.BuildCreatePageAsync(pageModel.Employee, cancellationToken);
+            return View(invalidModel);
+        }
+
+        var result = await employeeService.CreateAsync(pageModel.Employee, User, cancellationToken);
+        if (!result.Success)
+        {
+            foreach (var error in result.Errors)
+            {
+                ModelState.AddModelError($"{nameof(pageModel.Employee)}.{error.Key}", error.Value);
+            }
+
+            var errorModel = await employeeService.BuildCreatePageAsync(pageModel.Employee, cancellationToken);
+            return View(errorModel);
+        }
+
+        TempData["SuccessMessage"] = "Tạo nhân viên thành công.";
+        if (string.Equals(submitAction, "save-new", StringComparison.OrdinalIgnoreCase))
+        {
+            return RedirectToAction(nameof(Create));
+        }
+
+        return RedirectToAction(nameof(Details), new { id = result.EmployeeId });
     }
 
     [HttpPost]
